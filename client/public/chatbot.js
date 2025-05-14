@@ -1,5 +1,5 @@
 /**
- * MarkSync AI Chatbot Script
+ * ecom.ai Chatbot Script
  * This script creates an embedded AI chatbot for your website
  */
 (function() {
@@ -8,7 +8,7 @@
   const siteId = scriptTag.getAttribute('data-site-id') || scriptTag.getAttribute('id');
   
   if (!siteId) {
-    console.error('MarkSync Chatbot: Missing site ID. Please add id="your-site-id" to the script tag.');
+    console.error('ecom.ai Chatbot: Missing site ID. Please add id="your-site-id" to the script tag.');
     return;
   }
 
@@ -281,7 +281,7 @@
     try {
       // Extract the domain for API lookup - remove protocol and paths
       const hostname = window.location.hostname;
-      console.log('MarkSync Chatbot: Initializing for domain', hostname);
+      console.log('ecom.ai Chatbot: Initializing for domain', hostname);
       
       // Check if we're running locally, use a simplified hostname in that case
       const isDevelopment = hostname === 'localhost' || hostname.includes('127.0.0.1');
@@ -289,7 +289,7 @@
       
       // Add a debug log to show the full URL being requested
       const requestUrl = `${config.apiUrl}/api/public/chatbot?domain=${encodeURIComponent(domainForLookup)}&siteId=${encodeURIComponent(siteId)}`;
-      console.log('MarkSync Chatbot: Requesting config from', requestUrl);
+      console.log('ecom.ai Chatbot: Requesting config from', requestUrl);
       
       const response = await fetch(requestUrl, {
         method: 'GET',
@@ -299,9 +299,9 @@
       });
       
       if (!response.ok) {
-        console.error('MarkSync Chatbot: Server returned status', response.status);
+        console.error('ecom.ai Chatbot: Server returned status', response.status);
         const errorText = await response.text();
-        console.error('MarkSync Chatbot: Error response:', errorText);
+        console.error('ecom.ai Chatbot: Error response:', errorText);
         throw new Error(`Failed to initialize chatbot: ${response.status}`);
       }
       
@@ -309,14 +309,14 @@
       try {
         chatbotConfig = await response.json();
       } catch (jsonError) {
-        console.error('MarkSync Chatbot: Error parsing JSON response', jsonError);
+        console.error('ecom.ai Chatbot: Error parsing JSON response', jsonError);
         throw new Error('Invalid response format from server');
       }
       
-      console.log('MarkSync Chatbot: Received config', chatbotConfig);
+      console.log('ecom.ai Chatbot: Received config', chatbotConfig);
       
       if (!chatbotConfig || !chatbotConfig.id) {
-        console.error('MarkSync Chatbot: Invalid or missing chatbot configuration');
+        console.error('ecom.ai Chatbot: Invalid or missing chatbot configuration');
         throw new Error('Invalid chatbot configuration received');
       }
       
@@ -335,7 +335,7 @@
       
       return chatbotConfig.id;
     } catch (error) {
-      console.error('MarkSync Chatbot: Error initializing', error);
+      console.error('ecom.ai Chatbot: Error initializing', error);
       addMessage('Sorry, I encountered an error while initializing. Please try again later or contact the website owner.', 'assistant');
       return null;
     }
@@ -400,12 +400,12 @@
     try {
       const chatbotId = await initSession();
       if (!chatbotId) {
-        console.error('MarkSync Chatbot: Failed to get chatbot ID');
+        console.error('ecom.ai Chatbot: Failed to get chatbot ID');
         return null;
       }
       
       const visitorId = generateVisitorId();
-      console.log('MarkSync Chatbot: Creating new session for chatbot', chatbotId, 'visitor', visitorId);
+      console.log('ecom.ai Chatbot: Creating new session for chatbot', chatbotId, 'visitor', visitorId);
       
       const response = await fetch(`${config.apiUrl}/api/public/chat-sessions`, {
         method: 'POST',
@@ -423,7 +423,7 @@
       
       if (!response.ok) {
         const errorText = await response.text();
-        console.error('MarkSync Chatbot: Server returned status', response.status, errorText);
+        console.error('ecom.ai Chatbot: Server returned status', response.status, errorText);
         throw new Error(`Failed to create chat session: ${response.status}`);
       }
       
@@ -431,19 +431,19 @@
       try {
         data = await response.json();
       } catch (jsonError) {
-        console.error('MarkSync Chatbot: Error parsing session JSON', jsonError);
+        console.error('ecom.ai Chatbot: Error parsing session JSON', jsonError);
         throw new Error('Invalid session response format');
       }
       
       if (!data || !data.id) {
-        console.error('MarkSync Chatbot: Invalid session data', data);
+        console.error('ecom.ai Chatbot: Invalid session data', data);
         throw new Error('Invalid session data received');
       }
       
-      console.log('MarkSync Chatbot: Created session', data.id);
+      console.log('ecom.ai Chatbot: Created session', data.id);
       return data.id;
     } catch (error) {
-      console.error('MarkSync Chatbot: Error creating session', error);
+      console.error('ecom.ai Chatbot: Error creating session', error);
       addMessage('Sorry, I encountered an error while starting the chat. Please try refreshing the page.', 'assistant');
       return null;
     }
@@ -453,15 +453,15 @@
   async function sendMessage(message) {
     // Create a session if needed
     if (!sessionId) {
-      console.log('MarkSync Chatbot: No session found, creating one...');
+      console.log('ecom.ai Chatbot: No session found, creating one...');
       sessionId = await createSession();
       if (!sessionId) {
-        console.error('MarkSync Chatbot: Failed to create a session');
+        console.error('ecom.ai Chatbot: Failed to create a session');
         return 'Sorry, I encountered an error connecting to the chat service. Please try again later.';
       }
     }
     
-    console.log('MarkSync Chatbot: Sending message to session', sessionId);
+    console.log('ecom.ai Chatbot: Sending message to session', sessionId);
     
     try {
       const response = await fetch(`${config.apiUrl}/api/public/chat-sessions/${sessionId}/messages`, {
@@ -479,7 +479,7 @@
       if (!response.ok) {
         // If session expired, try to recreate it and retry
         if (response.status === 404) {
-          console.log('MarkSync Chatbot: Session may have expired, recreating...');
+          console.log('ecom.ai Chatbot: Session may have expired, recreating...');
           sessionId = await createSession();
           if (sessionId) {
             // Retry with new session
@@ -488,7 +488,7 @@
         }
         
         const errorText = await response.text();
-        console.error('MarkSync Chatbot: Message error', response.status, errorText);
+        console.error('ecom.ai Chatbot: Message error', response.status, errorText);
         throw new Error(`Failed to send message: ${response.status}`);
       }
       
@@ -496,18 +496,18 @@
       try {
         data = await response.json();
       } catch (jsonError) {
-        console.error('MarkSync Chatbot: Error parsing message response JSON', jsonError);
+        console.error('ecom.ai Chatbot: Error parsing message response JSON', jsonError);
         throw new Error('Invalid message response format');
       }
       
       if (!data || !data.message || data.message.content === undefined) {
-        console.error('MarkSync Chatbot: Invalid message response data', data);
+        console.error('ecom.ai Chatbot: Invalid message response data', data);
         throw new Error('Invalid message response data');
       }
       
       return data.message.content;
     } catch (error) {
-      console.error('MarkSync Chatbot: Error sending message', error);
+      console.error('ecom.ai Chatbot: Error sending message', error);
       return 'Sorry, I encountered an error processing your message. Please try again later.';
     }
   }

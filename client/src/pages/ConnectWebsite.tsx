@@ -116,11 +116,11 @@ export default function ConnectWebsite() {
                   >
                     <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
                   </svg>
-                  Intelligent AI Chatbot
+                  ecom.ai Intelligent Chatbot
                 </h3>
                 <p className="text-sm text-gray-600">
-                  Our AI chatbot will automatically learn about your website content and provide accurate answers to your visitors. 
-                  Questions asked to the chatbot will be used to create AEO content for your website.
+                  Our AI chatbot will automatically learn about your website content and provide accurate answers to your visitors using OpenAI's GPT-4o. 
+                  Questions asked to the chatbot will be used to create AEO content for your website, which you'll be able to review and approve.
                 </p>
               </div>
                 

@@ -1,6 +1,6 @@
-export const APP_NAME = "MarkSync";
+export const APP_NAME = "ecom.ai";
 
-export const SITE_URL = "https://marksync.io";
+export const SITE_URL = "https://ecom.ai";
 
 export const API_ENDPOINTS = {
   AUTH: {
