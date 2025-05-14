@@ -1,4 +1,4 @@
-import type { Express } from "express";
+import express, { type Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import session from "express-session";
@@ -6,6 +6,7 @@ import MemoryStore from "memorystore";
 import passport from "passport";
 import passportLocal from "passport-local";
 import bcrypt from "bcryptjs";
+import path from "path";
 
 // Controllers
 import * as authController from "./controllers/auth";
@@ -20,6 +21,10 @@ import * as aeoContentController from "./controllers/aeoContent";
 import { isAuthenticated } from "./middleware/auth";
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Serve the chatbot.js file statically from client/public
+  app.use('/chatbot.js', (req, res) => {
+    res.sendFile(path.resolve(process.cwd(), 'client/public/chatbot.js'));
+  });
   // Session store
   const SessionStore = MemoryStore(session);
   app.use(
