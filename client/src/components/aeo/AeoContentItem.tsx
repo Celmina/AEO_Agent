@@ -14,6 +14,7 @@ interface AeoContentItemProps {
   onApprove?: () => void;
   onReject?: () => void;
   onEdit?: (newAnswer: string) => void;
+  onPublish?: () => void;
 }
 
 export function AeoContentItem({
@@ -23,7 +24,8 @@ export function AeoContentItem({
   timestamp,
   onApprove,
   onReject,
-  onEdit
+  onEdit,
+  onPublish
 }: AeoContentItemProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [editedAnswer, setEditedAnswer] = useState(answer);
@@ -136,7 +138,18 @@ export function AeoContentItem({
                 </Button>
               </>
             )}
-            {(status === 'approved' || status === 'rejected') && (
+            {status === 'approved' && (
+              <>
+                <Button variant="outline" onClick={() => setIsEditing(true)}>
+                  Edit
+                </Button>
+                <Button onClick={onPublish} className="bg-green-600 hover:bg-green-700">
+                  <i className="fas fa-globe mr-1"></i>
+                  Publish to Website
+                </Button>
+              </>
+            )}
+            {status === 'rejected' && (
               <Button variant="outline" onClick={() => setIsEditing(true)}>
                 Edit
               </Button>

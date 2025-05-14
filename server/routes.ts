@@ -14,6 +14,7 @@ import * as companiesController from "./controllers/companies";
 import * as campaignsController from "./controllers/campaigns";
 import * as statsController from "./controllers/stats";
 import * as chatbotController from "./controllers/chatbot";
+import * as aeoContentController from "./controllers/aeoContent";
 
 // Middleware
 import { isAuthenticated } from "./middleware/auth";
@@ -110,6 +111,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/chatbots/:id", isAuthenticated, chatbotController.getChatbot);
   app.put("/api/chatbots/:id", isAuthenticated, chatbotController.updateChatbot);
 
+  // AEO content routes
+  app.get("/api/aeo-content", isAuthenticated, aeoContentController.getAeoContent);
+  app.get("/api/aeo-content/:id", isAuthenticated, aeoContentController.getAeoContentById);
+  app.put("/api/aeo-content/:id", isAuthenticated, aeoContentController.updateAeoContent);
+  app.post("/api/aeo-content/:id/approve", isAuthenticated, aeoContentController.approveAeoContent);
+  app.post("/api/aeo-content/:id/reject", isAuthenticated, aeoContentController.rejectAeoContent);
+  app.post("/api/aeo-content/:id/publish", isAuthenticated, aeoContentController.publishAeoContent);
+  
   // Public chatbot API
   app.get("/api/public/chatbot", chatbotController.getChatbotByDomain);
   app.post("/api/public/chat-sessions", chatbotController.createChatSession);

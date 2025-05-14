@@ -77,13 +77,14 @@ export default function AeoManagement() {
     }
   }, [aeoContentQuery.data]);
   
-  // Mutations for approving, rejecting, and editing content
+  // Mutations for approving, rejecting, editing, and publishing content
   const approveMutation = useMutation({
     mutationFn: async (id: string) => {
       return await apiRequest("POST", `/api/aeo-content/${id}/approve`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/aeo-content"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/stats/aeo"] });
       toast({
         title: "Content approved",
         description: "The content has been moved to the approved list.",
@@ -105,6 +106,7 @@ export default function AeoManagement() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/aeo-content"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/stats/aeo"] });
       toast({
         title: "Content rejected",
         description: "The content has been rejected and will not be published.",
@@ -138,6 +140,29 @@ export default function AeoManagement() {
         variant: "destructive",
       });
       console.error("Failed to update content:", error);
+    }
+  });
+  
+  const publishMutation = useMutation({
+    mutationFn: async (id: string) => {
+      return await apiRequest("POST", `/api/aeo-content/${id}/publish`);
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/aeo-content"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/stats/aeo"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/stats/dashboard"] });
+      toast({
+        title: "Content published",
+        description: "The content has been published to your website with SEO schema markup.",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: "Failed to publish the content. Please try again.",
+        variant: "destructive",
+      });
+      console.error("Failed to publish content:", error);
     }
   });
   
