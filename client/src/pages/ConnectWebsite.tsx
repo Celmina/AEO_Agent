@@ -46,8 +46,8 @@ export default function ConnectWebsite() {
       queryClient.invalidateQueries({ queryKey: ["/api/websites"] });
       setSiteId(data.id.toString());
       toast({
-        title: "Website connected",
-        description: "Your website has been connected successfully.",
+        title: "Website registered",
+        description: "Your website has been registered. Now add the code snippet to complete the connection.",
       });
     },
     onError: () => {
@@ -178,43 +178,43 @@ export default function ConnectWebsite() {
 
               {siteId && (
                 <div className="mt-6 space-y-4">
-                  <div className="rounded-lg border border-green-200 bg-green-50 p-4">
+                  <div className="rounded-lg border border-blue-200 bg-blue-50 p-4">
                     <div className="flex items-center justify-between">
-                      <h3 className="text-sm font-medium text-green-800">Website Connected Successfully!</h3>
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-green-500" viewBox="0 0 20 20" fill="currentColor">
+                      <h3 className="text-sm font-medium text-blue-800">Website Registered Successfully!</h3>
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-blue-500" viewBox="0 0 20 20" fill="currentColor">
                         <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
                       </svg>
                     </div>
-                    <p className="mt-2 text-sm text-green-700">
-                      Your website has been connected! Add the AI chatbot to your website by copying 
-                      the code below and pasting it right before the closing <code className="bg-green-100 px-1 py-0.5 rounded text-xs">&lt;/body&gt;</code> tag.
+                    <p className="mt-2 text-sm text-blue-700">
+                      <strong>Important:</strong> Your website is registered but not yet connected. To complete the connection, add the AI chatbot 
+                      code below to your website by pasting it right before the closing <code className="bg-blue-100 px-1 py-0.5 rounded text-xs">&lt;/body&gt;</code> tag.
                     </p>
                     <CodeSnippet code={jsSnippet} language="html" className="mt-3" />
                   </div>
                   
-                  <div className="mt-4 rounded-lg border border-blue-200 bg-blue-50 p-4">
-                    <h3 className="text-sm font-medium text-blue-800 flex items-center">
+                  <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 p-4">
+                    <h3 className="text-sm font-medium text-amber-800 flex items-center">
                       <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                       </svg>
-                      What happens next?
+                      Connection Process & Next Steps
                     </h3>
-                    <ul className="mt-2 text-sm text-blue-700 space-y-1">
+                    <ul className="mt-2 text-sm text-amber-700 space-y-1">
                       <li className="flex items-start">
                         <span className="mr-2">1.</span>
-                        <span>The AI chatbot will appear on your website</span>
+                        <span><strong>Add the code</strong> to your website to complete the actual connection</span>
                       </li>
                       <li className="flex items-start">
                         <span className="mr-2">2.</span>
-                        <span>Visitor questions will be answered using the Perplexity API</span>
+                        <span>Once added, the AI chatbot will appear on your website and use OpenAI's GPT-4o to answer questions</span>
                       </li>
                       <li className="flex items-start">
                         <span className="mr-2">3.</span>
-                        <span>Common questions will be converted to AEO content for your approval</span>
+                        <span>Visitor questions will be stored and converted to AEO content suggestions</span>
                       </li>
                       <li className="flex items-start">
                         <span className="mr-2">4.</span>
-                        <span>After approval, the content will be optimized for search engines</span>
+                        <span>You'll review and approve content before it's added to your website with SEO schema markup</span>
                       </li>
                     </ul>
                   </div>
@@ -222,7 +222,19 @@ export default function ConnectWebsite() {
               )}
             </TabsContent>
             <TabsContent value="cms" className="mt-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 mb-6">
+                <h3 className="text-sm font-medium text-amber-800 flex items-center">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  Coming Soon
+                </h3>
+                <p className="mt-2 text-sm text-amber-700">
+                  Our CMS integrations are currently in development and will be available soon. For now, please use the JavaScript integration method to add the chatbot to your website.
+                </p>
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 opacity-70">
                 <Card>
                   <CardHeader className="pb-2">
                     <CardTitle className="text-lg flex items-center">
@@ -238,8 +250,8 @@ export default function ConnectWebsite() {
                     <p className="text-sm text-gray-600">
                       Install our WordPress plugin to easily add the AI chatbot to your site.
                     </p>
-                    <Button className="mt-4 w-full" variant="outline">
-                      Download Plugin
+                    <Button className="mt-4 w-full" variant="outline" disabled>
+                      Coming Soon
                     </Button>
                   </CardContent>
                 </Card>
@@ -258,8 +270,8 @@ export default function ConnectWebsite() {
                     <p className="text-sm text-gray-600">
                       Add our AI chatbot to your Shopify store with our app.
                     </p>
-                    <Button className="mt-4 w-full" variant="outline">
-                      Install App
+                    <Button className="mt-4 w-full" variant="outline" disabled>
+                      Coming Soon
                     </Button>
                   </CardContent>
                 </Card>
@@ -278,8 +290,8 @@ export default function ConnectWebsite() {
                     <p className="text-sm text-gray-600">
                       Connect your Wix site with our AI chatbot integration.
                     </p>
-                    <Button className="mt-4 w-full" variant="outline">
-                      Add to Wix
+                    <Button className="mt-4 w-full" variant="outline" disabled>
+                      Coming Soon
                     </Button>
                   </CardContent>
                 </Card>
@@ -298,8 +310,8 @@ export default function ConnectWebsite() {
                     <p className="text-sm text-gray-600">
                       Add our AI chatbot to your Squarespace site.
                     </p>
-                    <Button className="mt-4 w-full" variant="outline">
-                      Install Integration
+                    <Button className="mt-4 w-full" variant="outline" disabled>
+                      Coming Soon
                     </Button>
                   </CardContent>
                 </Card>
