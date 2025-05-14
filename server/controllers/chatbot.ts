@@ -43,7 +43,7 @@ export async function createChatbot(req: Request, res: Response) {
       .values({
         ...chatbotData,
         websiteId,
-        userId: req.user.id
+        userId: userId
       })
       .returning();
 
@@ -97,10 +97,11 @@ export async function updateChatbot(req: Request, res: Response) {
     const updateData = req.body;
     
     // Check if the chatbot belongs to the user
+    const userId = (req.user as any).id;
     const chatbot = await db.query.chatbots.findFirst({
       where: and(
         eq(chatbots.id, chatbotId),
-        eq(chatbots.userId, req.user.id)
+        eq(chatbots.userId, userId)
       )
     });
 
