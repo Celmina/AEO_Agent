@@ -18,14 +18,14 @@ interface NavItemProps {
 function NavItem({ href, icon, label, isActive }: NavItemProps) {
   return (
     <Link href={href}>
-      <a className={`flex items-center space-x-3 px-3 py-2 rounded-md transition-colors ${
+      <div className={`flex items-center space-x-3 px-3 py-2 rounded-md transition-colors ${
         isActive 
           ? 'bg-primary text-white' 
           : 'hover:bg-gray-100'
       }`}>
         <i className={`${icon} w-5 h-5`}></i>
         <span>{label}</span>
-      </a>
+      </div>
     </Link>
   );
 }

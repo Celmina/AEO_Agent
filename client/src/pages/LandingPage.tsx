@@ -67,15 +67,15 @@ export default function LandingPage() {
             <div className="space-y-1">
               {isAuthenticated ? (
                 <Link href="/dashboard">
-                  <a className="text-gray-600 hover:bg-gray-50 hover:text-gray-900 block pl-3 pr-4 py-2 border-l-4 border-transparent text-base font-medium">Dashboard</a>
+                  <div className="text-gray-600 hover:bg-gray-50 hover:text-gray-900 block pl-3 pr-4 py-2 border-l-4 border-transparent text-base font-medium">Dashboard</div>
                 </Link>
               ) : (
                 <>
                   <Link href="/login">
-                    <a className="text-gray-600 hover:bg-gray-50 hover:text-gray-900 block pl-3 pr-4 py-2 border-l-4 border-transparent text-base font-medium">Log in</a>
+                    <div className="text-gray-600 hover:bg-gray-50 hover:text-gray-900 block pl-3 pr-4 py-2 border-l-4 border-transparent text-base font-medium">Log in</div>
                   </Link>
                   <Link href="/signup">
-                    <a className="text-gray-600 hover:bg-gray-50 hover:text-gray-900 block pl-3 pr-4 py-2 border-l-4 border-transparent text-base font-medium">Sign up</a>
+                    <div className="text-gray-600 hover:bg-gray-50 hover:text-gray-900 block pl-3 pr-4 py-2 border-l-4 border-transparent text-base font-medium">Sign up</div>
                   </Link>
                 </>
               )}
@@ -91,11 +91,11 @@ export default function LandingPage() {
             <main className="mt-10 mx-auto max-w-7xl px-4 sm:mt-12 sm:px-6 md:mt-16 lg:mt-20 lg:px-8 xl:mt-28">
               <div className="sm:text-center lg:text-left">
                 <h1 className="text-4xl tracking-tight font-extrabold text-gray-900 sm:text-5xl md:text-6xl">
-                  <span className="block">Transform your</span>
-                  <span className="block text-primary">marketing today</span>
+                  <span className="block">Optimize for</span>
+                  <span className="block text-primary">AI Search</span>
                 </h1>
                 <p className="mt-3 text-base text-gray-500 sm:mt-5 sm:text-lg sm:max-w-xl sm:mx-auto md:mt-5 md:text-xl lg:mx-0">
-                  All-in-one marketing platform that helps you connect with your audience, grow your engagement, and scale your business effortlessly.
+                  Add an AI chatbot to your website and automatically optimize your content for Answer Engine Optimization (AEO) to rank higher in AI search results.
                 </p>
                 <div className="mt-5 sm:mt-8 sm:flex sm:justify-center lg:justify-start">
                   <div className="rounded-md shadow">
@@ -140,66 +140,66 @@ export default function LandingPage() {
               {/* Feature 1 */}
               <div className="border border-gray-200 rounded-lg p-6 hover:shadow-lg transition-shadow">
                 <div className="w-12 h-12 flex items-center justify-center rounded-md bg-primary/10 text-primary">
-                  <i className="fas fa-chart-line text-2xl"></i>
+                  <i className="fas fa-robot text-2xl"></i>
                 </div>
-                <h3 className="mt-4 text-lg font-medium text-gray-900">Advanced Analytics</h3>
+                <h3 className="mt-4 text-lg font-medium text-gray-900">AI Chatbot Integration</h3>
                 <p className="mt-2 text-gray-500">
-                  Gain deep insights into your audience's behavior with comprehensive analytics.
+                  Add a smart AI chatbot to your website to answer customer questions instantly.
                 </p>
               </div>
 
               {/* Feature 2 */}
               <div className="border border-gray-200 rounded-lg p-6 hover:shadow-lg transition-shadow">
                 <div className="w-12 h-12 flex items-center justify-center rounded-md bg-primary/10 text-primary">
-                  <i className="fas fa-envelope text-2xl"></i>
+                  <i className="fas fa-search text-2xl"></i>
                 </div>
-                <h3 className="mt-4 text-lg font-medium text-gray-900">Email Campaigns</h3>
+                <h3 className="mt-4 text-lg font-medium text-gray-900">Answer Engine Optimization</h3>
                 <p className="mt-2 text-gray-500">
-                  Create, send, and track beautiful email campaigns that convert.
+                  Turn chatbot questions into SEO-optimized content that ranks in AI search results.
                 </p>
               </div>
 
               {/* Feature 3 */}
               <div className="border border-gray-200 rounded-lg p-6 hover:shadow-lg transition-shadow">
                 <div className="w-12 h-12 flex items-center justify-center rounded-md bg-primary/10 text-primary">
-                  <i className="fas fa-users text-2xl"></i>
+                  <i className="fas fa-code text-2xl"></i>
                 </div>
-                <h3 className="mt-4 text-lg font-medium text-gray-900">Audience Segmentation</h3>
+                <h3 className="mt-4 text-lg font-medium text-gray-900">Easy Integration</h3>
                 <p className="mt-2 text-gray-500">
-                  Target the right audience with powerful segmentation tools.
+                  Integrate with your website in minutes using our simple JavaScript snippet.
                 </p>
               </div>
 
               {/* Feature 4 */}
               <div className="border border-gray-200 rounded-lg p-6 hover:shadow-lg transition-shadow">
                 <div className="w-12 h-12 flex items-center justify-center rounded-md bg-primary/10 text-primary">
-                  <i className="fas fa-robot text-2xl"></i>
+                  <i className="fas fa-chart-line text-2xl"></i>
                 </div>
-                <h3 className="mt-4 text-lg font-medium text-gray-900">AI-Powered Suggestions</h3>
+                <h3 className="mt-4 text-lg font-medium text-gray-900">Performance Analytics</h3>
                 <p className="mt-2 text-gray-500">
-                  Get intelligent recommendations to improve your campaign performance.
+                  Track chatbot usage, popular questions, and AEO content performance.
                 </p>
               </div>
 
               {/* Feature 5 */}
               <div className="border border-gray-200 rounded-lg p-6 hover:shadow-lg transition-shadow">
                 <div className="w-12 h-12 flex items-center justify-center rounded-md bg-primary/10 text-primary">
-                  <i className="fas fa-code text-2xl"></i>
+                  <i className="fas fa-shield-alt text-2xl"></i>
                 </div>
-                <h3 className="mt-4 text-lg font-medium text-gray-900">Easy Integration</h3>
+                <h3 className="mt-4 text-lg font-medium text-gray-900">Content Approval Flow</h3>
                 <p className="mt-2 text-gray-500">
-                  Connect your website with a simple JavaScript snippet or plugin.
+                  Review and approve all content before it's published to your website.
                 </p>
               </div>
 
               {/* Feature 6 */}
               <div className="border border-gray-200 rounded-lg p-6 hover:shadow-lg transition-shadow">
                 <div className="w-12 h-12 flex items-center justify-center rounded-md bg-primary/10 text-primary">
-                  <i className="fas fa-mobile-alt text-2xl"></i>
+                  <i className="fas fa-cogs text-2xl"></i>
                 </div>
-                <h3 className="mt-4 text-lg font-medium text-gray-900">Mobile Optimization</h3>
+                <h3 className="mt-4 text-lg font-medium text-gray-900">Customizable Experience</h3>
                 <p className="mt-2 text-gray-500">
-                  Ensure your campaigns look great on any device, anytime.
+                  Personalize your chatbot's appearance and behavior to match your brand.
                 </p>
               </div>
             </div>
