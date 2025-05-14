@@ -283,24 +283,52 @@
       const hostname = window.location.hostname;
       console.log('MarkSync Chatbot: Initializing for domain', hostname);
       
+      // Check if we're running locally, use a simplified hostname in that case
+      const isDevelopment = hostname === 'localhost' || hostname.includes('127.0.0.1');
+      const domainForLookup = isDevelopment ? hostname : hostname.replace(/^www\./, '');
+      
       // Add a debug log to show the full URL being requested
-      const requestUrl = `${config.apiUrl}/api/public/chatbot?domain=${hostname}`;
+      const requestUrl = `${config.apiUrl}/api/public/chatbot?domain=${encodeURIComponent(domainForLookup)}&siteId=${encodeURIComponent(siteId)}`;
       console.log('MarkSync Chatbot: Requesting config from', requestUrl);
       
-      const response = await fetch(requestUrl);
+      const response = await fetch(requestUrl, {
+        method: 'GET',
+        headers: {
+          'Accept': 'application/json'
+        }
+      });
       
       if (!response.ok) {
         console.error('MarkSync Chatbot: Server returned status', response.status);
+        const errorText = await response.text();
+        console.error('MarkSync Chatbot: Error response:', errorText);
         throw new Error(`Failed to initialize chatbot: ${response.status}`);
       }
       
-      const chatbotConfig = await response.json();
+      let chatbotConfig;
+      try {
+        chatbotConfig = await response.json();
+      } catch (jsonError) {
+        console.error('MarkSync Chatbot: Error parsing JSON response', jsonError);
+        throw new Error('Invalid response format from server');
+      }
+      
       console.log('MarkSync Chatbot: Received config', chatbotConfig);
+      
+      if (!chatbotConfig || !chatbotConfig.id) {
+        console.error('MarkSync Chatbot: Invalid or missing chatbot configuration');
+        throw new Error('Invalid chatbot configuration received');
+      }
       
       // Update config with server values
       if (chatbotConfig.primaryColor) config.primaryColor = chatbotConfig.primaryColor;
       if (chatbotConfig.position) config.position = chatbotConfig.position;
       if (chatbotConfig.name) config.title = chatbotConfig.name;
+      if (chatbotConfig.collectEmail !== undefined) config.collectEmail = chatbotConfig.collectEmail;
+      
+      // Update UI elements with new configuration
+      updateChatbotStyles();
+      
       if (chatbotConfig.initialMessage) {
         addMessage(chatbotConfig.initialMessage, 'assistant');
       }
@@ -308,63 +336,179 @@
       return chatbotConfig.id;
     } catch (error) {
       console.error('MarkSync Chatbot: Error initializing', error);
-      addMessage('Sorry, I encountered an error while initializing. Please try again later.', 'assistant');
+      addMessage('Sorry, I encountered an error while initializing. Please try again later or contact the website owner.', 'assistant');
       return null;
+    }
+  }
+  
+  // Updates the chatbot UI with current configuration
+  function updateChatbotStyles() {
+    // Update button color
+    const button = document.querySelector('.marksync-chatbot-button');
+    if (button) button.style.backgroundColor = config.primaryColor;
+    
+    // Update header color
+    const header = document.querySelector('.marksync-chatbot-header');
+    if (header) header.style.backgroundColor = config.primaryColor;
+    
+    // Update send button color
+    const sendButton = document.querySelector('.marksync-send-button');
+    if (sendButton) sendButton.style.backgroundColor = config.primaryColor;
+    
+    // Update user message bubble color
+    const style = document.createElement('style');
+    style.textContent = `
+      .marksync-message.user { background-color: ${config.primaryColor}; }
+      .marksync-chatbot-input input:focus { border-color: ${config.primaryColor}; }
+      .marksync-email-form button { background-color: ${config.primaryColor}; }
+    `;
+    document.head.appendChild(style);
+    
+    // Update position
+    const container = document.querySelector('.marksync-chatbot-container');
+    if (container) {
+      container.style.top = config.position.includes('top') ? '20px' : 'auto';
+      container.style.bottom = config.position.includes('bottom') ? '20px' : 'auto';
+      container.style.left = config.position.includes('left') ? '20px' : 'auto';
+      container.style.right = config.position.includes('right') ? '20px' : 'auto';
+    }
+    
+    // Update title
+    const title = document.querySelector('.marksync-chatbot-title');
+    if (title) title.textContent = config.title;
+    
+    // Update email collection visibility
+    const emailForm = document.querySelector('.marksync-email-form');
+    const messagesContainer = document.querySelector('.marksync-chatbot-messages');
+    const inputArea = document.querySelector('.marksync-chatbot-input');
+    
+    if (emailForm && messagesContainer && inputArea) {
+      if (config.collectEmail) {
+        emailForm.style.display = 'flex';
+        messagesContainer.style.display = 'none';
+        inputArea.style.display = 'none';
+      } else {
+        emailForm.style.display = 'none';
+        messagesContainer.style.display = 'flex';
+        inputArea.style.display = 'flex';
+      }
     }
   }
   
   // Helper function to create a chat session
   async function createSession() {
     try {
+      const chatbotId = await initSession();
+      if (!chatbotId) {
+        console.error('MarkSync Chatbot: Failed to get chatbot ID');
+        return null;
+      }
+      
+      const visitorId = generateVisitorId();
+      console.log('MarkSync Chatbot: Creating new session for chatbot', chatbotId, 'visitor', visitorId);
+      
       const response = await fetch(`${config.apiUrl}/api/public/chat-sessions`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Accept': 'application/json'
         },
         body: JSON.stringify({
-          chatbotId: await initSession(),
+          chatbotId: chatbotId,
           visitorEmail: userEmail,
-          visitorId: generateVisitorId()
+          visitorId: visitorId,
+          url: window.location.href // Include current page URL for context
         }),
       });
       
       if (!response.ok) {
-        throw new Error('Failed to create chat session');
+        const errorText = await response.text();
+        console.error('MarkSync Chatbot: Server returned status', response.status, errorText);
+        throw new Error(`Failed to create chat session: ${response.status}`);
       }
       
-      const data = await response.json();
+      let data;
+      try {
+        data = await response.json();
+      } catch (jsonError) {
+        console.error('MarkSync Chatbot: Error parsing session JSON', jsonError);
+        throw new Error('Invalid session response format');
+      }
+      
+      if (!data || !data.id) {
+        console.error('MarkSync Chatbot: Invalid session data', data);
+        throw new Error('Invalid session data received');
+      }
+      
+      console.log('MarkSync Chatbot: Created session', data.id);
       return data.id;
     } catch (error) {
       console.error('MarkSync Chatbot: Error creating session', error);
+      addMessage('Sorry, I encountered an error while starting the chat. Please try refreshing the page.', 'assistant');
       return null;
     }
   }
   
   // Helper function to send a message
   async function sendMessage(message) {
+    // Create a session if needed
     if (!sessionId) {
+      console.log('MarkSync Chatbot: No session found, creating one...');
       sessionId = await createSession();
-      if (!sessionId) return;
+      if (!sessionId) {
+        console.error('MarkSync Chatbot: Failed to create a session');
+        return 'Sorry, I encountered an error connecting to the chat service. Please try again later.';
+      }
     }
+    
+    console.log('MarkSync Chatbot: Sending message to session', sessionId);
     
     try {
       const response = await fetch(`${config.apiUrl}/api/public/chat-sessions/${sessionId}/messages`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Accept': 'application/json'
         },
-        body: JSON.stringify({ message }),
+        body: JSON.stringify({ 
+          message: message,
+          url: window.location.href // Include current page URL for context
+        }),
       });
       
       if (!response.ok) {
-        throw new Error('Failed to send message');
+        // If session expired, try to recreate it and retry
+        if (response.status === 404) {
+          console.log('MarkSync Chatbot: Session may have expired, recreating...');
+          sessionId = await createSession();
+          if (sessionId) {
+            // Retry with new session
+            return sendMessage(message);
+          }
+        }
+        
+        const errorText = await response.text();
+        console.error('MarkSync Chatbot: Message error', response.status, errorText);
+        throw new Error(`Failed to send message: ${response.status}`);
       }
       
-      const data = await response.json();
+      let data;
+      try {
+        data = await response.json();
+      } catch (jsonError) {
+        console.error('MarkSync Chatbot: Error parsing message response JSON', jsonError);
+        throw new Error('Invalid message response format');
+      }
+      
+      if (!data || !data.message || data.message.content === undefined) {
+        console.error('MarkSync Chatbot: Invalid message response data', data);
+        throw new Error('Invalid message response data');
+      }
+      
       return data.message.content;
     } catch (error) {
       console.error('MarkSync Chatbot: Error sending message', error);
-      return 'Sorry, I encountered an error. Please try again later.';
+      return 'Sorry, I encountered an error processing your message. Please try again later.';
     }
   }
   

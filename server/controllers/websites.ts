@@ -47,9 +47,6 @@ export async function getWebsite(req: Request, res: Response) {
   }
 }
 
-import { db } from "../db";
-import { chatbots } from "@shared/schema";
-
 /**
  * Create a new website
  */
@@ -78,7 +75,7 @@ export async function createWebsite(req: Request, res: Response) {
       const initialMessage = "Hello! How can I help you with information about our website?";
       
       await db.insert(chatbots).values({
-        name: `${websiteData.name} Chatbot`,
+        name: `${websiteData.domain} Chatbot`, // Use domain instead of name
         userId: userId,
         websiteId: website.id,
         initialMessage: initialMessage,

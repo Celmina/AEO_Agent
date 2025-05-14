@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import { db } from '../db';
 import { chatbots, chatSessions, chatMessages, aeoContent, websites, companyProfiles } from '@shared/schema';
-import { eq, and } from 'drizzle-orm';
+import { eq, and, desc, asc } from 'drizzle-orm';
 import { generateAIResponse } from '../services/perplexityService';
 import { log } from '../vite';
 
