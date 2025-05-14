@@ -22,8 +22,13 @@ import { isAuthenticated } from "./middleware/auth";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Serve the chatbot.js file statically from client/public
+  // Serve chatbot.js and the newer version with improved error handling
   app.use('/chatbot.js', (req, res) => {
     res.sendFile(path.resolve(process.cwd(), 'client/public/chatbot.js'));
+  });
+  
+  app.use('/chatbot-v2.js', (req, res) => {
+    res.sendFile(path.resolve(process.cwd(), 'client/public/chatbot-v2.js'));
   });
   // Session store
   const SessionStore = MemoryStore(session);
