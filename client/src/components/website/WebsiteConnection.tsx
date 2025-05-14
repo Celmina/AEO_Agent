@@ -23,7 +23,7 @@ export function WebsiteConnection({
   const { toast } = useToast();
   
   const snippetCode = `<script 
-  src="${window.location.origin}/chatbot.js" 
+  src="${window.location.origin}/chatbot-v2.js" 
   id="${siteId}"
   data-position="bottom-right"
   data-color="#4f46e5"
@@ -73,9 +73,9 @@ export function WebsiteConnection({
             <div className="flex items-start p-3 bg-green-50 rounded-md">
               <CheckCircle className="h-5 w-5 text-green-600 mr-2 mt-0.5" />
               <div>
-                <h4 className="font-medium text-green-800">Website Connected</h4>
+                <h4 className="font-medium text-green-800">Website Registered</h4>
                 <p className="text-sm text-green-700">
-                  Your chatbot is active and collecting data for AEO.
+                  Your website is registered. Make sure the code snippet is added to your site to enable the chatbot and AEO features.
                 </p>
               </div>
             </div>
@@ -83,9 +83,9 @@ export function WebsiteConnection({
             <div className="flex items-start p-3 bg-yellow-50 rounded-md">
               <AlertCircle className="h-5 w-5 text-yellow-600 mr-2 mt-0.5" />
               <div>
-                <h4 className="font-medium text-yellow-800">Website Not Connected</h4>
+                <h4 className="font-medium text-yellow-800">Website Registration Pending</h4>
                 <p className="text-sm text-yellow-700">
-                  Add the code snippet below to your website to connect it.
+                  Click "Edit" to register your website, then add the code snippet below to enable the chatbot.
                 </p>
               </div>
             </div>
