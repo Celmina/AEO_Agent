@@ -35,7 +35,7 @@ function Router() {
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <ThemeProvider defaultTheme="light" storageKey="marksync-theme">
+      <ThemeProvider defaultTheme="light" storageKey="ecomai-theme">
         <AuthProvider>
           <TooltipProvider>
             <Toaster />

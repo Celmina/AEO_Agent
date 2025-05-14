@@ -479,7 +479,7 @@ export default function LandingPage() {
                   <i className="fas fa-star-half-alt"></i>
                 </div>
               </div>
-              <p className="text-gray-600 italic">"As a small business owner, I needed something easy to use that wouldn't break the bank. MarkSync delivers on both fronts and has helped us grow significantly."</p>
+              <p className="text-gray-600 italic">"As a small business owner, I needed something easy to use that wouldn't break the bank. ecom.ai delivers on both fronts and has helped us grow significantly."</p>
               <div className="mt-4 flex items-center">
                 <div className="ml-4">
                   <h4 className="text-sm font-bold text-gray-900">Lisa Wong</h4>
@@ -691,7 +691,7 @@ export default function LandingPage() {
 
           <div className="mt-12 border-t border-gray-700 pt-8">
             <p className="text-base text-gray-400 text-center">
-              &copy; {new Date().getFullYear()} MarkSync. All rights reserved.
+              &copy; {new Date().getFullYear()} ecom.ai. All rights reserved.
             </p>
           </div>
         </div>

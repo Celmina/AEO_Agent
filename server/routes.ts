@@ -29,7 +29,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   const SessionStore = MemoryStore(session);
   app.use(
     session({
-      secret: process.env.SESSION_SECRET || "marksync-secret-key",
+      secret: process.env.SESSION_SECRET || "ecomai-secret-key",
       resave: false,
       saveUninitialized: false,
       cookie: { maxAge: 24 * 60 * 60 * 1000 }, // 24 hours
