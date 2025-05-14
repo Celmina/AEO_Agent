@@ -135,12 +135,39 @@ export async function getChatbotByDomain(req: Request, res: Response) {
       return res.status(400).json({ message: 'Domain parameter is required' });
     }
 
-    // Get website by domain
-    const website = await db.query.websites.findFirst({
-      where: eq(websites.domain, domain)
-    });
+    log(`Chatbot lookup requested for domain: ${domain}`, 'chatbot');
+    
+    // Normalize the domain (remove www. if present)
+    const normalizedDomain = domain.replace(/^www\./i, '');
+    
+    // Try multiple domain patterns to make matching more robust
+    // For example, both "example.com" and "www.example.com" should match
+    const domainPatterns = [
+      normalizedDomain,
+      `www.${normalizedDomain}`,
+      `https://${normalizedDomain}`,
+      `http://${normalizedDomain}`,
+      `https://www.${normalizedDomain}`,
+      `http://www.${normalizedDomain}`
+    ];
+    
+    // Find the website by trying each domain pattern
+    let website = null;
+    for (const pattern of domainPatterns) {
+      log(`Trying to match domain pattern: ${pattern}`, 'chatbot');
+      const foundWebsite = await db.query.websites.findFirst({
+        where: eq(websites.domain, pattern)
+      });
+      
+      if (foundWebsite) {
+        website = foundWebsite;
+        log(`Found website match: ${pattern}`, 'chatbot');
+        break;
+      }
+    }
 
     if (!website) {
+      log(`No website found for domain: ${domain} (tried ${domainPatterns.join(', ')})`, 'chatbot');
       return res.status(404).json({ message: 'Website not found' });
     }
 
@@ -153,16 +180,19 @@ export async function getChatbotByDomain(req: Request, res: Response) {
     });
 
     if (!chatbot) {
+      log(`No active chatbot found for website ID ${website.id}`, 'chatbot');
       return res.status(404).json({ message: 'No active chatbot found for this website' });
     }
+
+    log(`Found active chatbot ID ${chatbot.id} for domain ${domain}`, 'chatbot');
 
     // Return public configuration data only
     const publicConfig = {
       id: chatbot.id,
-      name: chatbot.name,
-      primaryColor: chatbot.primaryColor,
-      position: chatbot.position,
-      initialMessage: chatbot.initialMessage,
+      name: chatbot.name || 'Chat with us',
+      primaryColor: chatbot.primaryColor || '#4f46e5',
+      position: chatbot.position || 'bottom-right',
+      initialMessage: chatbot.initialMessage || 'Hi there! How can I help you today?',
       collectEmail: chatbot.collectEmail
     };
 

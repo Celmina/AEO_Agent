@@ -279,13 +279,23 @@
   // Helper function to initialize the session
   async function initSession() {
     try {
-      const response = await fetch(`${config.apiUrl}/api/public/chatbot?domain=${window.location.hostname}`);
+      // Extract the domain for API lookup - remove protocol and paths
+      const hostname = window.location.hostname;
+      console.log('MarkSync Chatbot: Initializing for domain', hostname);
+      
+      // Add a debug log to show the full URL being requested
+      const requestUrl = `${config.apiUrl}/api/public/chatbot?domain=${hostname}`;
+      console.log('MarkSync Chatbot: Requesting config from', requestUrl);
+      
+      const response = await fetch(requestUrl);
       
       if (!response.ok) {
-        throw new Error('Failed to initialize chatbot');
+        console.error('MarkSync Chatbot: Server returned status', response.status);
+        throw new Error(`Failed to initialize chatbot: ${response.status}`);
       }
       
       const chatbotConfig = await response.json();
+      console.log('MarkSync Chatbot: Received config', chatbotConfig);
       
       // Update config with server values
       if (chatbotConfig.primaryColor) config.primaryColor = chatbotConfig.primaryColor;
