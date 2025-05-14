@@ -222,19 +222,68 @@ export async function getChatbotByDomain(req: Request, res: Response) {
       }
     }
 
-    // If no website is found, create a default response for development/testing
+    // If no website is found, try to match by siteId as a direct numeric ID
+    if (!website && siteId) {
+      try {
+        const siteIdNumeric = parseInt(siteId, 10);
+        if (!isNaN(siteIdNumeric)) {
+          website = await db.query.websites.findFirst({
+            where: eq(websites.id, siteIdNumeric)
+          });
+          if (website) {
+            log(`Found website match using numeric ID: ${siteIdNumeric}`, 'chatbot');
+          }
+        }
+      } catch (dbError) {
+        log(`Database error finding website by numeric ID: ${dbError}`, 'error');
+      }
+    }
+    
+    // If still no website found, create a fallback response
     if (!website) {
       const message = siteId 
         ? `No website found for siteId: ${siteId}` 
         : `No website found for domain: ${domain}`;
       log(message, 'chatbot');
       
-      // For development only - provide a default configuration
-      // This allows the chatbot to work even if the database is empty or has connectivity issues
-      log('Providing default chatbot configuration for development', 'chatbot');
+      // Try to find any website owned by the same user as a last resort
+      // This helps with development and testing environments
+      let anyWebsite = null;
+      try {
+        anyWebsite = await db.query.websites.findFirst({
+          orderBy: [desc(websites.updatedAt)]
+        });
+      } catch (err) {
+        log(`Error finding any website: ${err}`, 'error');
+      }
+      
+      // If we found another website, use its company information
+      if (anyWebsite) {
+        log(`Using alternative website (ID: ${anyWebsite.id}) for chatbot configuration`, 'chatbot');
+        
+        const chatbotForSite = await db.query.chatbots.findFirst({
+          where: eq(chatbots.websiteId, anyWebsite.id)
+        });
+        
+        // Use the found website's information
+        const altConfig = {
+          id: siteId ? parseInt(siteId, 10) || 1 : 1, // Keep requested ID for continuity
+          name: chatbotForSite?.name || `Chat with ${anyWebsite.name}`,
+          primaryColor: chatbotForSite?.primaryColor || '#4f46e5',
+          position: chatbotForSite?.position || 'bottom-right',
+          initialMessage: chatbotForSite?.initialMessage || `Hello! How can I help you with information about ${anyWebsite.name}?`,
+          collectEmail: chatbotForSite?.collectEmail !== undefined ? chatbotForSite.collectEmail : false,
+          websiteDomain: anyWebsite.domain
+        };
+        
+        return res.status(200).json(altConfig);
+      }
+      
+      // Last resort fallback (should only happen in completely empty database)
+      log('No websites found in database. Providing generic fallback configuration', 'chatbot');
       const defaultConfig = {
         id: siteId ? parseInt(siteId, 10) || 1 : 1,
-        name: 'ecom.ai Chat',
+        name: 'Website Chat Assistant',
         primaryColor: '#4f46e5',
         position: 'bottom-right',
         initialMessage: 'Hello! How can I help you today?',
@@ -488,17 +537,57 @@ export async function sendMessage(req: Request, res: Response) {
     if (!session) {
       log(`Session ID ${sessionId} not found or database error. Creating fallback response`, 'chatbot');
       
-      // Create a more intelligent fallback response based on the user's message
-      let aiResponse = "I'm the ecom.ai chatbot assistant. How can I help you today?";
+      // Try to find website information for better personalization
+      let website = null;
+      try {
+        // Look for any website in the database to use for context
+        website = await db.query.websites.findFirst({
+          orderBy: [desc(websites.updatedAt)],
+          with: {
+            user: {
+              with: {
+                companyProfile: true
+              }
+            }
+          }
+        });
+      } catch (err) {
+        log(`Error finding any website for context: ${err}`, 'error');
+      }
       
-      // Very basic context-aware responses for common questions
-      const lowerMessage = message.toLowerCase();
-      if (lowerMessage.includes('pricing') || lowerMessage.includes('cost') || lowerMessage.includes('plan')) {
-        aiResponse = "Our pricing plans start with a free tier that allows you to experience basic features. Premium plans with additional capabilities start at $29/month. Would you like me to provide more details?";
-      } else if (lowerMessage.includes('contact') || lowerMessage.includes('support')) {
-        aiResponse = "You can reach our support team at support@ecom.ai or through the chat on our website. Our team typically responds within 2 hours during business hours.";
-      } else if (lowerMessage.includes('features') || lowerMessage.includes('what can you do')) {
-        aiResponse = "ecom.ai provides AI-powered chatbots like me for your website, content optimization using Answer Engine Optimization (AEO), and automated SEO improvements based on user questions. Which feature would you like to know more about?";
+      // Craft a response using any found information
+      let companyName = "our company";
+      let siteName = "our website";
+      let aiResponse = "I'm a website assistant. How can I help you today?";
+      
+      if (website) {
+        // Safely extract company name from profile if available
+        const profile = website.user?.companyProfile;
+        companyName = profile ? profile.companyName : website.name;
+        siteName = website.name || "our website";
+        
+        // Create a properly personalized response
+        aiResponse = `Hello! I'm the chat assistant for ${companyName}. How can I help you with information about ${siteName}?`;
+        
+        // Very basic context-aware responses for common questions
+        const lowerMessage = message.toLowerCase();
+        if (lowerMessage.includes('pricing') || lowerMessage.includes('cost') || lowerMessage.includes('plan')) {
+          aiResponse = `For pricing information about ${companyName}, please visit our pricing page or contact our sales team. Would you like me to guide you to the right contact?`;
+        } else if (lowerMessage.includes('contact') || lowerMessage.includes('support')) {
+          aiResponse = `You can reach ${companyName}'s support team through our contact form on the website. Our team typically responds promptly during business hours.`;
+        } else if (lowerMessage.includes('features') || lowerMessage.includes('what can you do') || lowerMessage.includes('what do you offer')) {
+          aiResponse = `I can provide information about ${companyName} and answer questions about our products and services. What specific information are you looking for?`;
+        }
+      } else {
+        // Very basic context-aware responses for common questions
+        const lowerMessage = message.toLowerCase();
+        if (lowerMessage.includes('pricing') || lowerMessage.includes('cost') || lowerMessage.includes('plan')) {
+          aiResponse = `For pricing information, please visit our pricing page or contact our sales team. Would you like me to guide you to the right contact?`;
+        } else if (lowerMessage.includes('contact') || lowerMessage.includes('support')) {
+          aiResponse = `You can reach our support team through the contact form on the website. Our team typically responds promptly during business hours.`;
+        } else if (lowerMessage.includes('features') || lowerMessage.includes('what can you do') || lowerMessage.includes('what do you offer')) {
+          aiResponse = `I can provide information about our company and answer questions about our products and services. What specific information are you looking for?`;
+        }
       }
       
       // Generate a deterministic ID based on session and message

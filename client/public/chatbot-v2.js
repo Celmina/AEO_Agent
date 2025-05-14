@@ -571,9 +571,29 @@
     }
   }
   
+  // Keep track of sent messages to prevent duplicates
+  const sentMessages = new Set();
+  
   // Send a message to the server and get a response
   async function sendMessage(message) {
     try {
+      // Prevent duplicate messages
+      const messageKey = `${message}_${Date.now()}`;
+      if (sentMessages.has(message)) {
+        console.log('ecom.ai Chatbot v2: Preventing duplicate message send');
+        return;
+      }
+      
+      // Mark this message as sent
+      sentMessages.add(message);
+      
+      // Limit the size of the set to avoid memory leaks
+      if (sentMessages.size > 10) {
+        // Keep only the most recent 10 messages
+        sentMessages.clear();
+        sentMessages.add(message);
+      }
+      
       // Add the user message to the UI
       addMessage(message, 'user');
       
@@ -697,7 +717,13 @@
   
   // Show typing indicator
   function showTyping() {
+    // If already showing a typing indicator, don't show another one
     if (isTyping) return;
+    
+    // Clear any existing typing indicators first to prevent duplicates
+    hideTyping();
+    
+    // Now set the flag and add the new indicator
     isTyping = true;
     
     const messagesContainer = document.querySelector('.ecomai-chatbot-messages');

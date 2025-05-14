@@ -69,7 +69,7 @@ export default function ConnectWebsite() {
   }
 
   const jsSnippet = `<script 
-  src="${window.location.origin}/chatbot.js" 
+  src="${window.location.origin}/chatbot-v2.js" 
   id="${siteId || 'YOUR_SITE_ID'}"
   data-position="bottom-right"
   data-color="#4f46e5"
