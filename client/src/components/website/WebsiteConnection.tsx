@@ -22,7 +22,13 @@ export function WebsiteConnection({
 }: WebsiteConnectionProps) {
   const { toast } = useToast();
   
-  const snippetCode = `<script src="https://marksync.io/chatbot.js?id=${siteId}" async></script>`;
+  const snippetCode = `<script 
+  src="${window.location.origin}/chatbot.js" 
+  id="${siteId}"
+  data-position="bottom-right"
+  data-color="#4f46e5"
+  data-title="Chat with our AI Assistant"
+></script>`;
   
   const handleCopyClick = () => {
     navigator.clipboard.writeText(snippetCode).then(() => {
@@ -103,7 +109,7 @@ export function WebsiteConnection({
               </Button>
             </div>
             <p className="mt-2 text-xs text-gray-500">
-              Add this code to the &lt;head&gt; section of your website.
+              Add this code right before the closing &lt;/body&gt; tag of your website.
             </p>
           </div>
         </div>
