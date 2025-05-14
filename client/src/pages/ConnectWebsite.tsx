@@ -206,15 +206,15 @@ export default function ConnectWebsite() {
                       </li>
                       <li className="flex items-start">
                         <span className="mr-2">2.</span>
-                        <span>Once added, the AI chatbot will appear on your website and use OpenAI's GPT-4o to answer questions</span>
+                        <span>Our system will automatically scan your website content to personalize the AI chatbot responses</span>
                       </li>
                       <li className="flex items-start">
                         <span className="mr-2">3.</span>
-                        <span>Visitor questions will be stored and converted to AEO content suggestions</span>
+                        <span>The AI chatbot will answer visitor questions using your website's content via OpenAI's GPT-4o</span>
                       </li>
                       <li className="flex items-start">
                         <span className="mr-2">4.</span>
-                        <span>You'll review and approve content before it's added to your website with SEO schema markup</span>
+                        <span>Common questions will be converted to AEO content suggestions that you can approve before publishing</span>
                       </li>
                     </ul>
                   </div>
