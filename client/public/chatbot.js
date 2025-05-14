@@ -17,7 +17,7 @@
     position: scriptTag.getAttribute('data-position') || 'bottom-right',
     primaryColor: scriptTag.getAttribute('data-color') || '#4f46e5',
     title: scriptTag.getAttribute('data-title') || 'Chat with us',
-    apiUrl: scriptTag.getAttribute('data-api') || window.location.origin,
+    apiUrl: scriptTag.getAttribute('data-api') || scriptTag.src.split('/chatbot.js')[0],
     collectEmail: scriptTag.getAttribute('data-collect-email') !== 'false',
   };
 
@@ -287,7 +287,10 @@
       const isDevelopment = hostname === 'localhost' || hostname.includes('127.0.0.1');
       const domainForLookup = isDevelopment ? hostname : hostname.replace(/^www\./, '');
       
-      // Add a debug log to show the full URL being requested
+      // Add debug logs to show the full URL being requested and API configuration
+      console.log('ecom.ai Chatbot: API URL is configured as', config.apiUrl);
+      console.log('ecom.ai Chatbot: Script URL is', scriptTag.src);
+      
       const requestUrl = `${config.apiUrl}/api/public/chatbot?domain=${encodeURIComponent(domainForLookup)}&siteId=${encodeURIComponent(siteId)}`;
       console.log('ecom.ai Chatbot: Requesting config from', requestUrl);
       
