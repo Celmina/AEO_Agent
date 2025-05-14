@@ -22,6 +22,7 @@ export const users = pgTable("users", {
 export const websites = pgTable("websites", {
   id: serial("id").primaryKey(),
   userId: integer("user_id").notNull().references(() => users.id),
+  name: text("name"),
   domain: text("domain").notNull(),
   siteId: text("site_id").notNull().unique(),
   isActive: boolean("is_active").default(true),
@@ -65,6 +66,7 @@ export const chatSessions = pgTable("chat_sessions", {
   chatbotId: integer("chatbot_id").notNull().references(() => chatbots.id),
   visitorEmail: text("visitor_email"),
   visitorId: text("visitor_id"),
+  metadata: json("metadata").$type<Record<string, any>>(),
   startedAt: timestamp("started_at").defaultNow(),
   endedAt: timestamp("ended_at"),
 });

@@ -130,44 +130,62 @@ export async function updateChatbot(req: Request, res: Response) {
 export async function getChatbotByDomain(req: Request, res: Response) {
   try {
     const domain = req.query.domain as string;
+    const siteId = req.query.siteId as string;
     
-    if (!domain) {
-      return res.status(400).json({ message: 'Domain parameter is required' });
+    if (!domain && !siteId) {
+      return res.status(400).json({ message: 'Either domain or siteId parameter is required' });
     }
 
-    log(`Chatbot lookup requested for domain: ${domain}`, 'chatbot');
+    log(`Chatbot lookup requested for ${siteId ? 'siteId: ' + siteId : 'domain: ' + domain}`, 'chatbot');
     
-    // Normalize the domain (remove www. if present)
-    const normalizedDomain = domain.replace(/^www\./i, '');
-    
-    // Try multiple domain patterns to make matching more robust
-    // For example, both "example.com" and "www.example.com" should match
-    const domainPatterns = [
-      normalizedDomain,
-      `www.${normalizedDomain}`,
-      `https://${normalizedDomain}`,
-      `http://${normalizedDomain}`,
-      `https://www.${normalizedDomain}`,
-      `http://www.${normalizedDomain}`
-    ];
-    
-    // Find the website by trying each domain pattern
     let website = null;
-    for (const pattern of domainPatterns) {
-      log(`Trying to match domain pattern: ${pattern}`, 'chatbot');
-      const foundWebsite = await db.query.websites.findFirst({
-        where: eq(websites.domain, pattern)
+    
+    // First try to find by siteId if provided (most precise method)
+    if (siteId) {
+      website = await db.query.websites.findFirst({
+        where: eq(websites.siteId, siteId)
       });
       
-      if (foundWebsite) {
-        website = foundWebsite;
-        log(`Found website match: ${pattern}`, 'chatbot');
-        break;
+      if (website) {
+        log(`Found website match using siteId: ${siteId}`, 'chatbot');
+      }
+    }
+    
+    // If no website found by siteId and domain is provided, try domain matching
+    if (!website && domain) {
+      // Normalize the domain (remove www. if present)
+      const normalizedDomain = domain.replace(/^www\./i, '');
+      
+      // Try multiple domain patterns to make matching more robust
+      const domainPatterns = [
+        normalizedDomain,
+        `www.${normalizedDomain}`,
+        `https://${normalizedDomain}`,
+        `http://${normalizedDomain}`,
+        `https://www.${normalizedDomain}`,
+        `http://www.${normalizedDomain}`
+      ];
+      
+      // Find the website by trying each domain pattern
+      for (const pattern of domainPatterns) {
+        log(`Trying to match domain pattern: ${pattern}`, 'chatbot');
+        const foundWebsite = await db.query.websites.findFirst({
+          where: eq(websites.domain, pattern)
+        });
+        
+        if (foundWebsite) {
+          website = foundWebsite;
+          log(`Found website match using domain pattern: ${pattern}`, 'chatbot');
+          break;
+        }
       }
     }
 
     if (!website) {
-      log(`No website found for domain: ${domain} (tried ${domainPatterns.join(', ')})`, 'chatbot');
+      const message = siteId 
+        ? `No website found for siteId: ${siteId}` 
+        : `No website found for domain: ${domain}`;
+      log(message, 'chatbot');
       return res.status(404).json({ message: 'Website not found' });
     }
 
@@ -176,7 +194,8 @@ export async function getChatbotByDomain(req: Request, res: Response) {
       where: and(
         eq(chatbots.websiteId, website.id),
         eq(chatbots.status, 'active')
-      )
+      ),
+      orderBy: [desc(chatbots.updatedAt)] // Get the most recently updated chatbot if multiple exist
     });
 
     if (!chatbot) {
@@ -184,7 +203,7 @@ export async function getChatbotByDomain(req: Request, res: Response) {
       return res.status(404).json({ message: 'No active chatbot found for this website' });
     }
 
-    log(`Found active chatbot ID ${chatbot.id} for domain ${domain}`, 'chatbot');
+    log(`Found active chatbot ID ${chatbot.id} for website ID ${website.id}`, 'chatbot');
 
     // Return public configuration data only
     const publicConfig = {
@@ -193,7 +212,8 @@ export async function getChatbotByDomain(req: Request, res: Response) {
       primaryColor: chatbot.primaryColor || '#4f46e5',
       position: chatbot.position || 'bottom-right',
       initialMessage: chatbot.initialMessage || 'Hi there! How can I help you today?',
-      collectEmail: chatbot.collectEmail
+      collectEmail: chatbot.collectEmail !== undefined ? chatbot.collectEmail : true,
+      websiteDomain: website.domain
     };
 
     return res.status(200).json(publicConfig);
@@ -208,42 +228,71 @@ export async function getChatbotByDomain(req: Request, res: Response) {
  */
 export async function createChatSession(req: Request, res: Response) {
   try {
-    const { chatbotId, visitorEmail, visitorId } = req.body;
+    const { chatbotId, visitorEmail, visitorId, url } = req.body;
     
     if (!chatbotId) {
       return res.status(400).json({ message: 'Chatbot ID is required' });
     }
+
+    log(`Creating chat session for chatbot ID ${chatbotId}, visitor ${visitorId || 'anonymous'}`, 'chatbot');
 
     // Check if chatbot exists and is active
     const chatbot = await db.query.chatbots.findFirst({
       where: and(
         eq(chatbots.id, chatbotId),
         eq(chatbots.status, 'active')
-      )
+      ),
+      with: {
+        website: true
+      }
     });
 
     if (!chatbot) {
+      log(`Chatbot ID ${chatbotId} not found or not active`, 'chatbot');
       return res.status(404).json({ message: 'Chatbot not found or not active' });
     }
 
+    // Add more metadata about the visitor and session
+    const metadata = {
+      url: url || null,
+      userAgent: req.headers['user-agent'] || null,
+      referrer: req.headers['referer'] || null,
+      timestamp: new Date().toISOString(),
+      ipAddress: req.ip || req.socket.remoteAddress || null
+    };
+
     // Create new session
+    const sessionData = {
+      chatbotId: Number(chatbotId),
+      visitorEmail: visitorEmail || null,
+      visitorId: visitorId || `visitor_${Date.now()}_${Math.random().toString(36).substring(2, 10)}`,
+      metadata: JSON.stringify(metadata)
+    };
+    
     const [newSession] = await db.insert(chatSessions)
+      .values(sessionData)
+      .returning();
+
+    // Determine appropriate initial message
+    const websiteName = chatbot.website?.domain.replace(/^(https?:\/\/)?(www\.)?/, '').split('/')[0];
+    const initialMessage = chatbot.initialMessage || 
+      `Hi there! How can I help you with information about ${websiteName || 'our website'}?`;
+
+    // Add initial message from chatbot
+    const [firstMessage] = await db.insert(chatMessages)
       .values({
-        chatbotId: Number(chatbotId),
-        visitorEmail,
-        visitorId
+        sessionId: newSession.id,
+        content: initialMessage,
+        role: 'assistant'
       })
       .returning();
 
-    // Add initial message from chatbot
-    await db.insert(chatMessages)
-      .values({
-        sessionId: newSession.id,
-        content: chatbot.initialMessage,
-        role: 'assistant'
-      });
+    log(`Created chat session ID ${newSession.id} for chatbot ID ${chatbotId}`, 'chatbot');
 
-    return res.status(201).json(newSession);
+    return res.status(201).json({
+      ...newSession,
+      message: firstMessage
+    });
   } catch (error) {
     log(`Error creating chat session: ${error}`, 'error');
     return res.status(500).json({ message: 'Failed to create chat session', error: String(error) });
