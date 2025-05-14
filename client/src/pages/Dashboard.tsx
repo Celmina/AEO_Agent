@@ -55,6 +55,11 @@ export default function Dashboard() {
     }
   }, [websitesQuery.data]);
 
+  // Fetch chat messages count for the statistics
+  const chatStatsQuery = useQuery({
+    queryKey: ["/api/stats/chat-usage"]
+  });
+
   // Process AEO content data
   useEffect(() => {
     if (aeoContentQuery.data) {
@@ -73,18 +78,35 @@ export default function Dashboard() {
         
         setPendingAeoItems(pendingItems);
         
-        // Update stats based on real data
+        // Update AEO content stats based on real data
+        const approvedContent = data.filter((item: any) => 
+          item.status === 'approved' || item.status === 'published').length;
+        
+        const uniqueQuestionsCount = new Set(data.map((item: any) => item.question)).size;
+        
+        // Get chat interactions from stats endpoint if available, otherwise show 0
+        const chatInteractions = chatStatsQuery.data ? 
+          (chatStatsQuery.data as any).totalMessages || 0 : 0;
+        
         setStatsData({
-          chatbotInteractions: data.reduce((sum: number, item: any) => sum + (item.viewCount || 0), 0),
-          aeoContent: data.length,
-          uniqueQuestions: new Set(data.map((item: any) => item.question)).size,
-          searchTraffic: Math.floor(Math.random() * 20) + 5  // This would be replaced with real analytics
+          chatbotInteractions: chatInteractions,
+          aeoContent: approvedContent,
+          uniqueQuestions: uniqueQuestionsCount,
+          searchTraffic: data.filter((item: any) => item.status === 'published').length
+        });
+      } else {
+        // No data available, set all values to 0
+        setStatsData({
+          chatbotInteractions: 0,
+          aeoContent: 0,
+          uniqueQuestions: 0,
+          searchTraffic: 0
         });
       }
     }
     
-    setIsLoading(websitesQuery.isLoading || aeoContentQuery.isLoading);
-  }, [aeoContentQuery.data, websitesQuery.isLoading, aeoContentQuery.isLoading]);
+    setIsLoading(websitesQuery.isLoading || aeoContentQuery.isLoading || chatStatsQuery.isLoading);
+  }, [aeoContentQuery.data, websitesQuery.isLoading, aeoContentQuery.isLoading, chatStatsQuery.data, chatStatsQuery.isLoading]);
   
   const handleApproveAeo = async (id: string) => {
     try {
@@ -141,14 +163,14 @@ export default function Dashboard() {
           <DashboardStatsCard
             icon="fas fa-robot"
             iconColor="primary"
-            title="Chatbot Interactions"
+            title="Total Chat Messages"
             value={isLoading ? "Loading..." : statsData.chatbotInteractions.toString()}
             change={0}
           />
           <DashboardStatsCard
             icon="fas fa-search"
             iconColor="secondary"
-            title="AEO Content"
+            title="Approved AEO Content"
             value={isLoading ? "Loading..." : statsData.aeoContent.toString()}
             change={0}
           />
@@ -162,8 +184,8 @@ export default function Dashboard() {
           <DashboardStatsCard
             icon="fas fa-chart-line"
             iconColor="success"
-            title="Search Traffic"
-            value={isLoading ? "Loading..." : `${statsData.searchTraffic}%`}
+            title="Published AEO Content"
+            value={isLoading ? "Loading..." : statsData.searchTraffic.toString()}
             change={0}
           />
         </div>
@@ -222,7 +244,7 @@ export default function Dashboard() {
                   industry: "Technology",
                   targetAudience: "Website visitors seeking information",
                   brandVoice: "Professional, friendly, and helpful",
-                  services: "AI-powered chatbot with Perplexity integration and Answer Engine Optimization",
+                  services: "AI-powered chatbot with GPT-4o and Answer Engine Optimization",
                   valueProposition: "Improve website engagement and SEO with AI-driven conversations"
                 }}
               />

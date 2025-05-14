@@ -1,5 +1,8 @@
 import { Request, Response } from "express";
-import { storage } from "../storage";
+import { db } from "../db";
+import { chatSessions, chatMessages, chatbots, aeoContent } from "@shared/schema";
+import { eq, and, count } from "drizzle-orm";
+import { log } from "../vite";
 
 /**
  * Get dashboard statistics for the authenticated user
@@ -8,80 +11,163 @@ export async function getDashboardStats(req: Request, res: Response) {
   try {
     const userId = (req.user as any).id;
     
-    // In a real implementation, this would fetch actual stats from a database
-    // For the MVP, we'll return mock data that matches the expected format
+    // Get real statistics using the database
+    const totalChatbots = await db.select({ count: count() })
+      .from(chatbots)
+      .where(eq(chatbots.userId, userId));
+    
+    const approvedAeoContent = await db.select({ count: count() })
+      .from(aeoContent)
+      .where(and(
+        eq(aeoContent.userId, userId),
+        eq(aeoContent.status, 'approved')
+      ));
+    
+    const pendingAeoContent = await db.select({ count: count() })
+      .from(aeoContent)
+      .where(and(
+        eq(aeoContent.userId, userId),
+        eq(aeoContent.status, 'pending')
+      ));
+    
+    const publishedAeoContent = await db.select({ count: count() })
+      .from(aeoContent)
+      .where(and(
+        eq(aeoContent.userId, userId),
+        eq(aeoContent.status, 'published')
+      ));
     
     const dashboardStats = {
-      subscribers: {
-        total: 12496,
-        change: 8.2
+      chatbots: {
+        total: totalChatbots[0]?.count || 0,
+        change: 0 // We don't have historical data yet
       },
-      openRate: {
-        value: 24.3,
-        change: 2.1
+      approvedAeo: {
+        value: approvedAeoContent[0]?.count || 0,
+        change: 0
       },
-      clickRate: {
-        value: 5.4,
-        change: -0.5
+      pendingAeo: {
+        value: pendingAeoContent[0]?.count || 0,
+        change: 0
       },
-      conversionRate: {
-        value: 2.8,
-        change: 1.2
+      publishedAeo: {
+        value: publishedAeoContent[0]?.count || 0,
+        change: 0
       }
     };
     
     return res.json(dashboardStats);
   } catch (error) {
-    console.error("Error fetching dashboard stats:", error);
+    log(`Error fetching dashboard stats: ${error}`, 'error');
     return res.status(500).json({ message: "Internal server error" });
   }
 }
 
 /**
- * Get engagement statistics for the authenticated user
+ * Get chat usage statistics for the authenticated user
  */
-export async function getEngagementStats(req: Request, res: Response) {
+export async function getChatUsageStats(req: Request, res: Response) {
   try {
     const userId = (req.user as any).id;
     
-    // For the MVP, we'll return sample data
-    const engagementData = [
-      { name: 'Jan', opens: 30, clicks: 10, conversions: 5 },
-      { name: 'Feb', opens: 35, clicks: 12, conversions: 6 },
-      { name: 'Mar', opens: 40, clicks: 15, conversions: 7 },
-      { name: 'Apr', opens: 32, clicks: 11, conversions: 5 },
-      { name: 'May', opens: 38, clicks: 13, conversions: 6 },
-      { name: 'Jun', opens: 42, clicks: 17, conversions: 8 },
-      { name: 'Jul', opens: 45, clicks: 18, conversions: 9 },
-    ];
+    // Get user's chatbots
+    const userChatbots = await db.select({ id: chatbots.id })
+      .from(chatbots)
+      .where(eq(chatbots.userId, userId));
     
-    return res.json(engagementData);
+    // If user has no chatbots, return zeros
+    if (!userChatbots.length) {
+      return res.json({
+        totalSessions: 0,
+        totalMessages: 0,
+        averageMessagesPerSession: 0,
+        chatbotsWithActivity: 0
+      });
+    }
+    
+    const chatbotIds = userChatbots.map(chatbot => chatbot.id);
+    
+    // Count total chat sessions
+    const totalSessionsResult = await db.$client.query(`
+      SELECT COUNT(*) as count
+      FROM chat_sessions
+      WHERE chatbot_id = ANY($1)
+    `, [chatbotIds]);
+    
+    const totalSessions = parseInt(totalSessionsResult.rows[0]?.count || '0');
+    
+    // Count total messages
+    const totalMessagesResult = await db.$client.query(`
+      SELECT COUNT(*) as count
+      FROM chat_messages
+      WHERE session_id IN (
+        SELECT id FROM chat_sessions WHERE chatbot_id = ANY($1)
+      )
+    `, [chatbotIds]);
+    
+    const totalMessages = parseInt(totalMessagesResult.rows[0]?.count || '0');
+    
+    // Count number of chatbots with at least one session
+    const chatbotsWithActivityResult = await db.$client.query(`
+      SELECT COUNT(DISTINCT chatbot_id) as count
+      FROM chat_sessions
+      WHERE chatbot_id = ANY($1)
+    `, [chatbotIds]);
+    
+    const chatbotsWithActivity = parseInt(chatbotsWithActivityResult.rows[0]?.count || '0');
+    
+    // Calculate average messages per session
+    const averageMessagesPerSession = totalSessions > 0 ? (totalMessages / totalSessions) : 0;
+    
+    return res.json({
+      totalSessions,
+      totalMessages,
+      averageMessagesPerSession: parseFloat(averageMessagesPerSession.toFixed(1)),
+      chatbotsWithActivity
+    });
   } catch (error) {
-    console.error("Error fetching engagement stats:", error);
+    log(`Error fetching chat usage stats: ${error}`, 'error');
     return res.status(500).json({ message: "Internal server error" });
   }
 }
 
 /**
- * Get audience statistics for the authenticated user
+ * Get AEO statistics and breakdown for the authenticated user
  */
-export async function getAudienceStats(req: Request, res: Response) {
+export async function getAeoStats(req: Request, res: Response) {
   try {
     const userId = (req.user as any).id;
     
-    // For the MVP, we'll return sample data
-    const audienceData = [
-      { name: 'Jan', subscribers: 500, unsubscribes: 20 },
-      { name: 'Feb', subscribers: 700, unsubscribes: 30 },
-      { name: 'Mar', subscribers: 900, unsubscribes: 40 },
-      { name: 'Apr', subscribers: 1200, unsubscribes: 50 },
-      { name: 'May', subscribers: 1500, unsubscribes: 60 },
-      { name: 'Jun', subscribers: 1800, unsubscribes: 70 },
-    ];
+    // Get AEO content by status
+    const aeoStatsResult = await db.$client.query(`
+      SELECT 
+        status, 
+        COUNT(*) as count 
+      FROM aeo_content 
+      WHERE user_id = $1 
+      GROUP BY status
+    `, [userId]);
     
-    return res.json(audienceData);
+    // Convert to a more useful format
+    const aeoStats = {
+      pending: 0,
+      approved: 0,
+      rejected: 0,
+      published: 0,
+      total: 0
+    };
+    
+    aeoStatsResult.rows.forEach(row => {
+      const status = row.status as keyof typeof aeoStats;
+      const count = parseInt(row.count);
+      
+      aeoStats[status] = count;
+      aeoStats.total += count;
+    });
+    
+    return res.json(aeoStats);
   } catch (error) {
-    console.error("Error fetching audience stats:", error);
+    log(`Error fetching AEO stats: ${error}`, 'error');
     return res.status(500).json({ message: "Internal server error" });
   }
 }

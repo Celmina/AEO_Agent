@@ -102,8 +102,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Stats routes
   app.get("/api/stats/dashboard", isAuthenticated, statsController.getDashboardStats);
-  app.get("/api/stats/engagement", isAuthenticated, statsController.getEngagementStats);
-  app.get("/api/stats/audience", isAuthenticated, statsController.getAudienceStats);
+  app.get("/api/stats/chat-usage", isAuthenticated, statsController.getChatUsageStats);
+  app.get("/api/stats/aeo", isAuthenticated, statsController.getAeoStats);
   
   // Chatbot routes (authenticated)
   app.post("/api/chatbots", isAuthenticated, chatbotController.createChatbot);
