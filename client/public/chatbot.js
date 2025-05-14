@@ -12,14 +12,22 @@
     return;
   }
 
+  // Extract script source for fallback API URL
+  const scriptSrc = scriptTag.src || '';
+  // Default to source of script if no API URL provided
+  const defaultApiUrl = scriptSrc.split('/chatbot.js')[0] || window.location.origin;
+  
   // Configuration with defaults
   const config = {
     position: scriptTag.getAttribute('data-position') || 'bottom-right',
     primaryColor: scriptTag.getAttribute('data-color') || '#4f46e5',
     title: scriptTag.getAttribute('data-title') || 'Chat with us',
-    apiUrl: scriptTag.getAttribute('data-api') || scriptTag.src.split('/chatbot.js')[0],
+    apiUrl: scriptTag.getAttribute('data-api') || defaultApiUrl,
     collectEmail: scriptTag.getAttribute('data-collect-email') !== 'false',
   };
+  
+  // Log to console for debugging
+  console.log('ecom.ai Chatbot: Initialized with API URL:', config.apiUrl);
 
   // Create styles
   const styleEl = document.createElement('style');
@@ -339,6 +347,8 @@
       return chatbotConfig.id;
     } catch (error) {
       console.error('ecom.ai Chatbot: Error initializing', error);
+      console.log('ecom.ai Chatbot: Error details:', error.message, error.stack);
+      console.log('ecom.ai Chatbot: Attempted API URL:', config.apiUrl);
       addMessage('Sorry, I encountered an error while initializing. Please try again later or contact the website owner.', 'assistant');
       return null;
     }
