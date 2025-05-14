@@ -631,22 +631,144 @@ export async function sendMessage(req: Request, res: Response) {
 
     const userMessage = userMessageResult.rows[0];
 
-    // Get company info for AI context
-    let companyInfo: any = await db.query.companyProfiles.findFirst({
-      where: eq(companyProfiles.userId, session.chatbot.userId)
-    });
-
-    // Default company info if none is found
+    // Get company info for AI context with detailed error handling
+    let companyInfo: any = null;
+    try {
+      const profile = await db.query.companyProfiles.findFirst({
+        where: eq(companyProfiles.userId, session.chatbot.userId)
+      });
+      
+      if (profile) {
+        companyInfo = profile;
+        log(`Found company profile for chatbot's user ID ${session.chatbot.userId}`, 'chatbot');
+      }
+    } catch (dbError) {
+      log(`Error fetching company profile: ${dbError}`, 'error');
+    }
+    
+    // If no company profile is found, try to extract info from website
     if (!companyInfo) {
-      log(`No company profile found. Using development company info`, 'chatbot');
+      try {
+        // Get the website data which might contain scraped content
+        const website = await db.query.websites.findFirst({
+          where: eq(websites.id, session.chatbot.websiteId),
+        });
+        
+        if (website && website.scrapedContent) {
+          log(`Using scraped website content for chatbot context`, 'chatbot');
+          
+          // Parse the scraped content
+          let scrapedData = {};
+          try {
+            scrapedData = JSON.parse(website.scrapedContent.toString());
+          } catch (parseError) {
+            log(`Error parsing scraped content: ${parseError}`, 'error');
+          }
+          
+          // Create a company profile from the scraped data
+          companyInfo = {
+            companyName: website.name || "Website",
+            industry: extractFromScrapedContent(scrapedData, 'industry') || "General",
+            targetAudience: extractFromScrapedContent(scrapedData, 'targetAudience') || "Website visitors",
+            brandVoice: extractFromScrapedContent(scrapedData, 'brandVoice') || "Professional",
+            services: extractFromScrapedContent(scrapedData, 'services') || "Products and services",
+            valueProposition: extractFromScrapedContent(scrapedData, 'valueProposition') || 
+                              `Information about ${website.name || website.domain || "our website"}`
+          };
+        } else {
+          log(`No website data with scraped content found`, 'chatbot');
+        }
+      } catch (webError) {
+        log(`Error accessing website data: ${webError}`, 'error');
+      }
+    }
+    
+    // Default company info if nothing else is found
+    if (!companyInfo) {
+      log(`No company or website data found. Using fallback info`, 'chatbot');
       companyInfo = {
-        companyName: "ecom.ai Demo",
-        industry: "E-commerce Technology",
-        targetAudience: "E-commerce businesses looking to improve customer support and SEO",
-        brandVoice: "Helpful, informative, and professional",
-        services: "AI chatbot integration, Answer Engine Optimization, SEO content generation",
-        valueProposition: "Boost your e-commerce site's visibility and customer satisfaction"
+        companyName: session.chatbot?.website?.name || "Our website",
+        industry: "Business",
+        targetAudience: "Customers",
+        brandVoice: "Professional",
+        services: "Products and services",
+        valueProposition: `Information and assistance for ${session.chatbot?.website?.domain || "our website"}`
       };
+    }
+    
+    // Helper function to extract data from scraped content
+    function extractFromScrapedContent(data: any, field: string): string | null {
+      if (!data) return null;
+      
+      // Direct field access
+      if (data[field]) return data[field];
+      
+      // Common fields in scraped content
+      if (field === 'industry' && data.aboutContent) {
+        return extractIndustryFromText(data.aboutContent);
+      }
+      
+      if (field === 'services' && data.mainContent) {
+        return extractServicesFromText(data.mainContent);
+      }
+      
+      if (field === 'valueProposition' && data.mainContent) {
+        return extractValuePropositionFromText(data.mainContent);
+      }
+      
+      return null;
+    }
+    
+    // Simplified extraction functions
+    function extractIndustryFromText(text: string): string | null {
+      const industries = ['technology', 'healthcare', 'finance', 'education', 'retail', 
+                          'manufacturing', 'hospitality', 'construction', 'professional services'];
+      
+      for (const industry of industries) {
+        if (text.toLowerCase().includes(industry)) {
+          return industry.charAt(0).toUpperCase() + industry.slice(1);
+        }
+      }
+      
+      return null;
+    }
+    
+    function extractServicesFromText(text: string): string | null {
+      // Look for phrases like "we offer" or "our services"
+      const servicePatterns = [
+        /we offer (.*?)\./i,
+        /our services include (.*?)\./i,
+        /we provide (.*?)\./i,
+        /specialized in (.*?)\./i
+      ];
+      
+      for (const pattern of servicePatterns) {
+        const match = text.match(pattern);
+        if (match && match[1]) {
+          return match[1].trim();
+        }
+      }
+      
+      return null;
+    }
+    
+    function extractValuePropositionFromText(text: string): string | null {
+      // Look for value proposition phrases
+      const vpPatterns = [
+        /we help (.*?)\./i,
+        /our mission is (.*?)\./i,
+        /committed to (.*?)\./i,
+        /dedicated to (.*?)\./i
+      ];
+      
+      for (const pattern of vpPatterns) {
+        const match = text.match(pattern);
+        if (match && match[1]) {
+          return match[0].trim(); // Return the full match including "we help", etc.
+        }
+      }
+      
+      return null;
     }
 
     // Create context for AI

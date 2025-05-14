@@ -28,6 +28,9 @@ export const websites = pgTable("websites", {
   isActive: boolean("is_active").default(true),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
+  scrapedContent: text("scraped_content"),
+  lastScraped: timestamp("last_scraped"),
+  scrapingStatus: text("scraping_status").default("pending"),
 });
 
 // Company Profiles table

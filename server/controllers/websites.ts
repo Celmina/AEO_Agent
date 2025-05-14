@@ -4,6 +4,35 @@ import { insertWebsiteSchema, chatbots } from "@shared/schema";
 import { randomBytes } from "crypto";
 import { z, ZodError } from "zod";
 import { db } from "../db";
+import { scrapeWebsite } from "../services/websiteScraperService";
+import { log } from "../vite";
+
+/**
+ * Helper function to extract readable domain name from URL
+ */
+function extractDomainName(url: string): string {
+  try {
+    // Remove protocol if present
+    let domain = url.replace(/(^\w+:|^)\/\//, '');
+    // Remove www if present
+    domain = domain.replace(/^www\./, '');
+    // Remove path if present
+    domain = domain.split('/')[0];
+    // Remove query params and hash if present
+    domain = domain.split('?')[0].split('#')[0];
+    
+    // Extract domain name without TLD
+    const parts = domain.split('.');
+    if (parts.length >= 2) {
+      return parts[parts.length - 2].charAt(0).toUpperCase() + parts[parts.length - 2].slice(1);
+    }
+    
+    return domain.charAt(0).toUpperCase() + domain.slice(1);
+  } catch (e) {
+    // Return original domain if error
+    return url;
+  }
+}
 
 /**
  * Get all websites for the authenticated user
@@ -70,12 +99,36 @@ export async function createWebsite(req: Request, res: Response) {
     // Create the website
     const website = await storage.createWebsite(websiteData);
     
+    // Start website scraping in the background
+    try {
+      log(`Starting website scraping for ${websiteData.domain}`, 'website');
+      
+      // Run scraper in the background (don't await)
+      setTimeout(async () => {
+        try {
+          const result = await scrapeWebsite(websiteData.domain, website.id);
+          if (result) {
+            log(`Successfully scraped website: ${websiteData.domain}`, 'website');
+          } else {
+            log(`Failed to scrape website: ${websiteData.domain}`, 'error');
+          }
+        } catch (e) {
+          log(`Error in background scraping: ${e}`, 'error');
+        }
+      }, 100);
+    } catch (scraperError) {
+      log(`Error initiating website scraper: ${scraperError}`, 'error');
+      // Continue anyway - scraping failure shouldn't block website creation
+    }
+    
     // Auto-create a default chatbot for this website
     try {
-      const initialMessage = "Hello! How can I help you with information about our website?";
+      // Create chatbot with dynamic info based on website name
+      const siteName = websiteData.name || extractDomainName(websiteData.domain);
+      const initialMessage = `Hello! How can I help you with information about ${siteName}?`;
       
       await db.insert(chatbots).values({
-        name: `${websiteData.domain} Chatbot`, // Use domain instead of name
+        name: `${siteName} Assistant`, 
         userId: userId,
         websiteId: website.id,
         initialMessage: initialMessage,
@@ -87,9 +140,9 @@ export async function createWebsite(req: Request, res: Response) {
         updatedAt: new Date()
       });
       
-      console.log(`Automatically created chatbot for website ${website.id}`);
+      log(`Automatically created chatbot for website ${website.id}`, 'website');
     } catch (chatbotError) {
-      console.error("Error creating default chatbot:", chatbotError);
+      log(`Error creating default chatbot: ${chatbotError}`, 'error');
       // We don't fail the request if chatbot creation fails
       // The user can still create a chatbot manually
     }
