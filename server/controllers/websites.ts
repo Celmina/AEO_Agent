@@ -3,7 +3,7 @@ import { storage } from "../storage";
 import { insertWebsiteSchema, chatbots } from "@shared/schema";
 import { randomBytes } from "crypto";
 import { z, ZodError } from "zod";
-import { db } from "../db";
+import { db, pool } from "../db";
 import { scrapeWebsite } from "../services/websiteScraperService";
 import { log } from "../vite";
 import { eq, sql } from "drizzle-orm";
@@ -104,16 +104,44 @@ export async function createWebsite(req: Request, res: Response) {
     try {
       log(`Starting website scraping for ${websiteData.domain}`, 'website');
       
+      // Update the website status to 'scraping' to indicate the process has started
+      await pool.query(`
+        UPDATE websites 
+        SET status = $1
+        WHERE id = $2
+      `, ['scraping', website.id]);
+      
       // Run scraper in the background (don't await)
       setTimeout(async () => {
         try {
           const result = await scrapeWebsite(websiteData.domain, website.id);
+          
+          // Update the website status after scraping completes
           if (result) {
+            await pool.query(`
+              UPDATE websites 
+              SET status = $1
+              WHERE id = $2
+            `, ['active', website.id]);
+            
             log(`Successfully scraped website: ${websiteData.domain}`, 'website');
           } else {
+            await pool.query(`
+              UPDATE websites 
+              SET status = $1
+              WHERE id = $2
+            `, ['error', website.id]);
+            
             log(`Failed to scrape website: ${websiteData.domain}`, 'error');
           }
         } catch (e) {
+          // Update status to reflect the error
+          await pool.query(`
+            UPDATE websites 
+            SET status = $1
+            WHERE id = $2
+          `, ['error', website.id]);
+          
           log(`Error in background scraping: ${e}`, 'error');
         }
       }, 100);
@@ -151,7 +179,7 @@ export async function createWebsite(req: Request, res: Response) {
       ];
       
       // Execute direct query to avoid ORM-specific issues
-      const result = await db.execute(query, values);
+      const result = await pool.query(query, values);
       
       log(`Automatically created chatbot for website ${website.id}`, 'website');
     } catch (chatbotError) {

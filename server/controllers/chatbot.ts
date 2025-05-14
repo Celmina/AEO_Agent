@@ -728,7 +728,7 @@ export async function sendMessage(req: Request, res: Response) {
     if (!companyInfo) {
       try {
         // Get the website data using direct SQL to avoid ORM issues
-        const websiteResult = await db.execute(`
+        const websiteResult = await pool.query(`
           SELECT * FROM websites 
           WHERE id = $1
         `, [session.chatbot.websiteId]);
@@ -773,28 +773,61 @@ export async function sendMessage(req: Request, res: Response) {
       }
     }
     
-    // Default company info if nothing else is found
+    // Default company info if nothing else is found - but try to use website domain to make it specific
     if (!companyInfo) {
-      log(`No company or website data found. Using fallback info`, 'chatbot');
-      companyInfo = {
-        companyName: session.chatbot?.website?.name || "Our website",
-        industry: "Business",
-        targetAudience: "Customers",
-        brandVoice: "Professional",
-        services: "Products and services",
-        valueProposition: `Information and assistance for ${session.chatbot?.website?.domain || "our website"}`
-      };
+      try {
+        // Get just the website domain name as a fallback
+        const domainResult = await pool.query(`
+          SELECT domain, name FROM websites 
+          WHERE id = $1
+        `, [session.chatbot.websiteId]);
+        
+        const domain = domainResult.rows[0]?.domain || "our website";
+        const siteName = domainResult.rows[0]?.name || domain;
+        
+        log(`No company profile found, but retrieved domain: ${domain}`, 'chatbot');
+        
+        companyInfo = {
+          companyName: siteName,
+          industry: "Business",
+          targetAudience: "Website visitors",
+          brandVoice: "Professional",
+          services: "Services and information",
+          valueProposition: `Information and assistance for ${domain}`,
+          websiteDomain: domain
+        };
+      } catch (err) {
+        log(`Failed to get domain fallback, using very generic info: ${err}`, 'error');
+        companyInfo = {
+          companyName: "This website",
+          industry: "Business",
+          targetAudience: "Website visitors",
+          brandVoice: "Professional",
+          services: "Information services",
+          valueProposition: "Helping visitors find what they need"
+        };
+      }
     }
 
-    // Create context for AI
+    // Create context for AI, ensuring we never use generic ecom.ai info
+    // We want the context to be specific to this website only
+    log(`Creating AI context with company name: ${companyInfo.companyName}`, 'chatbot');
+    
     const context = `
-Company Name: ${companyInfo.companyName || 'ecom.ai Demo'}
-Industry: ${companyInfo.industry || 'E-commerce Technology'}
-Target Audience: ${companyInfo.targetAudience || 'Online businesses'}
-Brand Voice: ${companyInfo.brandVoice || 'Helpful and professional'}
-Services/Products: ${companyInfo.services || 'AI chatbot, AEO, SEO content'}
-Value Proposition: ${companyInfo.valueProposition || 'Improve customer support and SEO'}
-Website: ${session.chatbot?.website?.domain || 'ecom.ai'}
+IMPORTANT: You are a helpful assistant specifically for the website "${companyInfo.websiteDomain || companyInfo.companyName}".
+Only answer questions about this company/website. If asked about ecom.ai, explain you are here to help with 
+${companyInfo.companyName} information only.
+
+Company Name: ${companyInfo.companyName}
+Industry: ${companyInfo.industry}
+Target Audience: ${companyInfo.targetAudience}
+Brand Voice: ${companyInfo.brandVoice}
+Services/Products: ${companyInfo.services}
+Value Proposition: ${companyInfo.valueProposition}
+Website: ${companyInfo.websiteDomain || 'this website'}
+
+ANSWER ONLY QUESTIONS ABOUT THIS WEBSITE/COMPANY. For questions about other topics, politely explain you only
+have information about ${companyInfo.companyName}.
     `;
 
     try {
