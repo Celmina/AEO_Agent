@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
@@ -31,9 +31,19 @@ export default function Dashboard() {
   const [isLoading, setIsLoading] = useState(true);
   
   // Use React Query to fetch real data
-  const { data: websites } = useQuery({
-    queryKey: ["/api/websites"],
-    onSuccess: (data: any) => {
+  const websitesQuery = useQuery({
+    queryKey: ["/api/websites"]
+  });
+
+  // Fetch AEO content
+  const aeoContentQuery = useQuery({
+    queryKey: ["/api/aeo-content"]
+  });
+
+  // Process website data
+  useEffect(() => {
+    if (websitesQuery.data) {
+      const data = websitesQuery.data as any[];
       if (data && data.length > 0) {
         const website = data[0];
         setSiteId(website.id.toString());
@@ -43,12 +53,12 @@ export default function Dashboard() {
         });
       }
     }
-  });
+  }, [websitesQuery.data]);
 
-  // Fetch AEO content
-  const { data: aeoContent } = useQuery({
-    queryKey: ["/api/aeo-content"],
-    onSuccess: (data: any) => {
+  // Process AEO content data
+  useEffect(() => {
+    if (aeoContentQuery.data) {
+      const data = aeoContentQuery.data as any[];
       if (data && data.length > 0) {
         // Filter to only show pending items
         const pendingItems = data
@@ -57,7 +67,7 @@ export default function Dashboard() {
             id: item.id.toString(),
             question: item.question,
             answer: item.answer,
-            status: item.status,
+            status: item.status as 'pending' | 'approved' | 'rejected' | 'published',
             timestamp: new Date(item.updatedAt || item.createdAt)
           }));
         
@@ -71,13 +81,10 @@ export default function Dashboard() {
           searchTraffic: Math.floor(Math.random() * 20) + 5  // This would be replaced with real analytics
         });
       }
-      
-      setIsLoading(false);
-    },
-    onError: () => {
-      setIsLoading(false);
     }
-  });
+    
+    setIsLoading(websitesQuery.isLoading || aeoContentQuery.isLoading);
+  }, [aeoContentQuery.data, websitesQuery.isLoading, aeoContentQuery.isLoading]);
   
   const handleApproveAeo = async (id: string) => {
     try {
@@ -208,7 +215,9 @@ export default function Dashboard() {
             </CardHeader>
             <CardContent>
               <ChatbotPreview 
-                companyName={user?.name || "Your Company"}
+                companyName={(user?.firstName && user?.lastName) ? 
+                  `${user.firstName} ${user.lastName}'s Company` : 
+                  (user?.email?.split('@')[0] || "Your") + " Company"}
                 companyInfo={{
                   industry: "Technology",
                   targetAudience: "Website visitors seeking information",
