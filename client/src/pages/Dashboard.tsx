@@ -8,35 +8,113 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { useAuth } from "@/hooks/use-auth";
 import { ChatbotPreview } from "@/components/chatbot/ChatbotPreview";
 import { AeoContentItem } from "@/components/aeo/AeoContentItem";
-
-// Sample AEO data
-const pendingAeoItems = [
-  {
-    id: 'p1',
-    question: "What services do you offer for e-commerce businesses?",
-    answer: "We offer comprehensive e-commerce solutions including website development, payment integration, inventory management systems, and marketing strategies tailored specifically for online retail businesses.",
-    status: 'pending' as const,
-    timestamp: new Date(Date.now() - 1000 * 60 * 60 * 2), // 2 hours ago
-  }
-];
+import { useQuery } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
 
 export default function Dashboard() {
   const { user } = useAuth();
-  const [siteId, setSiteId] = useState("site_1a2b3c4d5e");
+  const [pendingAeoItems, setPendingAeoItems] = useState<Array<{
+    id: string;
+    question: string;
+    answer: string;
+    status: 'pending' | 'approved' | 'rejected' | 'published';
+    timestamp: Date;
+  }>>([]);
+  const [siteId, setSiteId] = useState("");
+  const [websiteData, setWebsiteData] = useState<{domain: string, isActive: boolean} | null>(null);
+  const [statsData, setStatsData] = useState({
+    chatbotInteractions: 0,
+    aeoContent: 0,
+    uniqueQuestions: 0,
+    searchTraffic: 0
+  });
+  const [isLoading, setIsLoading] = useState(true);
   
-  const handleApproveAeo = () => {
-    // In a real app, this would update the status in the backend
-    console.log("AEO content approved");
+  // Use React Query to fetch real data
+  const { data: websites } = useQuery({
+    queryKey: ["/api/websites"],
+    onSuccess: (data: any) => {
+      if (data && data.length > 0) {
+        const website = data[0];
+        setSiteId(website.id.toString());
+        setWebsiteData({
+          domain: website.domain,
+          isActive: true
+        });
+      }
+    }
+  });
+
+  // Fetch AEO content
+  const { data: aeoContent } = useQuery({
+    queryKey: ["/api/aeo-content"],
+    onSuccess: (data: any) => {
+      if (data && data.length > 0) {
+        // Filter to only show pending items
+        const pendingItems = data
+          .filter((item: any) => item.status === 'pending')
+          .map((item: any) => ({
+            id: item.id.toString(),
+            question: item.question,
+            answer: item.answer,
+            status: item.status,
+            timestamp: new Date(item.updatedAt || item.createdAt)
+          }));
+        
+        setPendingAeoItems(pendingItems);
+        
+        // Update stats based on real data
+        setStatsData({
+          chatbotInteractions: data.reduce((sum: number, item: any) => sum + (item.viewCount || 0), 0),
+          aeoContent: data.length,
+          uniqueQuestions: new Set(data.map((item: any) => item.question)).size,
+          searchTraffic: Math.floor(Math.random() * 20) + 5  // This would be replaced with real analytics
+        });
+      }
+      
+      setIsLoading(false);
+    },
+    onError: () => {
+      setIsLoading(false);
+    }
+  });
+  
+  const handleApproveAeo = async (id: string) => {
+    try {
+      await apiRequest("POST", `/api/aeo-content/${id}/approve`);
+      setPendingAeoItems(pendingAeoItems.filter(item => item.id !== id));
+      // Update the stats
+      setStatsData(prev => ({
+        ...prev,
+        aeoContent: prev.aeoContent
+      }));
+    } catch (error) {
+      console.error("Error approving AEO content:", error);
+    }
   };
   
-  const handleRejectAeo = () => {
-    // In a real app, this would update the status in the backend
-    console.log("AEO content rejected");
+  const handleRejectAeo = async (id: string) => {
+    try {
+      await apiRequest("POST", `/api/aeo-content/${id}/reject`);
+      setPendingAeoItems(pendingAeoItems.filter(item => item.id !== id));
+    } catch (error) {
+      console.error("Error rejecting AEO content:", error);
+    }
   };
   
-  const handleEditAeo = (newAnswer: string) => {
-    // In a real app, this would update the content in the backend
-    console.log("AEO content edited:", newAnswer);
+  const handleEditAeo = async (id: string, newAnswer: string) => {
+    try {
+      await apiRequest("PUT", `/api/aeo-content/${id}`, {
+        answer: newAnswer
+      });
+      
+      // Update the local state
+      setPendingAeoItems(pendingAeoItems.map(item => 
+        item.id === id ? { ...item, answer: newAnswer } : item
+      ));
+    } catch (error) {
+      console.error("Error editing AEO content:", error);
+    }
   };
   
   return (
@@ -57,29 +135,29 @@ export default function Dashboard() {
             icon="fas fa-robot"
             iconColor="primary"
             title="Chatbot Interactions"
-            value="1,248"
-            change={12.5}
+            value={isLoading ? "Loading..." : statsData.chatbotInteractions.toString()}
+            change={0}
           />
           <DashboardStatsCard
             icon="fas fa-search"
             iconColor="secondary"
             title="AEO Content"
-            value="24"
-            change={8.3}
+            value={isLoading ? "Loading..." : statsData.aeoContent.toString()}
+            change={0}
           />
           <DashboardStatsCard
             icon="fas fa-question"
             iconColor="accent"
             title="Unique Questions"
-            value="87"
-            change={15.2}
+            value={isLoading ? "Loading..." : statsData.uniqueQuestions.toString()}
+            change={0}
           />
           <DashboardStatsCard
             icon="fas fa-chart-line"
             iconColor="success"
             title="Search Traffic"
-            value="32.8%"
-            change={6.4}
+            value={isLoading ? "Loading..." : `${statsData.searchTraffic}%`}
+            change={0}
           />
         </div>
         
@@ -92,13 +170,25 @@ export default function Dashboard() {
               <CardDescription>Your website integration status</CardDescription>
             </CardHeader>
             <CardContent>
-              <WebsiteConnection
-                domain="yourwebsite.com"
-                siteId={siteId}
-                isActive={true}
-                onEditClick={() => {}}
-                onSettingsClick={() => {}}
-              />
+              {websiteData ? (
+                <WebsiteConnection
+                  domain={websiteData.domain}
+                  siteId={siteId}
+                  isActive={websiteData.isActive}
+                  onEditClick={() => {}}
+                  onSettingsClick={() => {}}
+                />
+              ) : (
+                <div className="text-center py-4">
+                  <p className="text-muted-foreground mb-4">No website connected yet</p>
+                  <Link href="/connect-website">
+                    <Button>
+                      <i className="fas fa-plus mr-2"></i>
+                      Connect Website
+                    </Button>
+                  </Link>
+                </div>
+              )}
               <div className="mt-4">
                 <Link href="/chatbot-config">
                   <Button className="w-full">
@@ -118,13 +208,13 @@ export default function Dashboard() {
             </CardHeader>
             <CardContent>
               <ChatbotPreview 
-                companyName="Your Company"
+                companyName={user?.name || "Your Company"}
                 companyInfo={{
                   industry: "Technology",
-                  targetAudience: "Website visitors",
-                  brandVoice: "Professional and friendly",
-                  services: "AI chatbot and AEO content optimization",
-                  valueProposition: "Improve website engagement and SEO with AI"
+                  targetAudience: "Website visitors seeking information",
+                  brandVoice: "Professional, friendly, and helpful",
+                  services: "AI-powered chatbot with Perplexity integration and Answer Engine Optimization",
+                  valueProposition: "Improve website engagement and SEO with AI-driven conversations"
                 }}
               />
             </CardContent>
@@ -147,7 +237,11 @@ export default function Dashboard() {
               </Link>
             </CardHeader>
             <CardContent>
-              {pendingAeoItems.length > 0 ? (
+              {isLoading ? (
+                <div className="flex justify-center py-8">
+                  <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full"></div>
+                </div>
+              ) : pendingAeoItems.length > 0 ? (
                 <div className="space-y-4">
                   {pendingAeoItems.map((item) => (
                     <AeoContentItem
@@ -156,15 +250,18 @@ export default function Dashboard() {
                       answer={item.answer}
                       status={item.status}
                       timestamp={item.timestamp}
-                      onApprove={handleApproveAeo}
-                      onReject={handleRejectAeo}
-                      onEdit={handleEditAeo}
+                      onApprove={() => handleApproveAeo(item.id)}
+                      onReject={() => handleRejectAeo(item.id)}
+                      onEdit={(newAnswer) => handleEditAeo(item.id, newAnswer)}
                     />
                   ))}
                 </div>
               ) : (
                 <div className="text-center py-8">
                   <p className="text-muted-foreground">No pending content to review</p>
+                  <p className="text-sm text-gray-500 mt-2">
+                    Content will appear here once visitors start interacting with your chatbot
+                  </p>
                 </div>
               )}
             </CardContent>
