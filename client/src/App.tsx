@@ -13,6 +13,7 @@ import Dashboard from "@/pages/Dashboard";
 import ConnectWebsite from "@/pages/ConnectWebsite";
 import CompanySetup from "@/pages/CompanySetup";
 import AeoManagement from "@/pages/AeoManagement";
+import ChatbotConfig from "@/pages/ChatbotConfig";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -24,6 +25,8 @@ function Router() {
       <Route path="/dashboard" component={Dashboard} />
       <Route path="/connect-website" component={ConnectWebsite} />
       <Route path="/company-setup" component={CompanySetup} />
+      <Route path="/aeo-management" component={AeoManagement} />
+      <Route path="/chatbot-config" component={ChatbotConfig} />
       <Route component={NotFound} />
     </Switch>
   );

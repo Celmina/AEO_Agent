@@ -1,0 +1,338 @@
+import React, { useState } from 'react';
+import { DashboardLayout } from "@/components/layout/DashboardLayout";
+import { ChatbotPreview } from "@/components/chatbot/ChatbotPreview";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
+import { useToast } from "@/hooks/use-toast";
+import { useLocation } from "wouter";
+
+export default function ChatbotConfig() {
+  const { toast } = useToast();
+  const [, setLocation] = useLocation();
+  const [activeTab, setActiveTab] = useState("basic");
+  const [companyInfo, setCompanyInfo] = useState({
+    companyName: "YourCompany",
+    industry: "Technology",
+    targetAudience: "Small to medium businesses looking to optimize their online presence",
+    brandVoice: "Professional, friendly, and helpful",
+    services: "AI-powered chatbot integration, Answer Engine Optimization (AEO), and website content optimization",
+    valueProposition: "Increase website engagement, improve SEO rankings, and convert more visitors with AI-powered conversation solutions",
+  });
+  
+  const [chatbotSettings, setChatbotSettings] = useState({
+    primaryColor: "#4f46e5",
+    position: "bottom-right",
+    initialMessage: `Hello! I'm the ${companyInfo.companyName} AI assistant. How can I help you today?`,
+    collectEmail: true,
+    responseTime: "instant",
+  });
+  
+  const handleCompanyInfoChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.target;
+    setCompanyInfo(prev => ({
+      ...prev,
+      [name]: value,
+    }));
+  };
+  
+  const handleSettingChange = (name: string, value: string | boolean) => {
+    setChatbotSettings(prev => ({
+      ...prev,
+      [name]: value,
+    }));
+  };
+  
+  const handleApprove = () => {
+    toast({
+      title: "Chatbot Approved",
+      description: "Your chatbot is now ready for deployment to your website.",
+    });
+    
+    // In a real application, we would send this configuration to the backend
+    // and generate the necessary code for the user's website
+    setTimeout(() => {
+      setLocation("/dashboard?success=chatbot-created");
+    }, 1500);
+  };
+  
+  const handleEdit = () => {
+    setActiveTab("basic");
+    window.scrollTo({
+      top: 0,
+      behavior: "smooth",
+    });
+  };
+  
+  return (
+    <DashboardLayout>
+      <div className="p-6 space-y-6">
+        <div className="flex justify-between items-center">
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight">Chatbot Configuration</h1>
+            <p className="text-muted-foreground">
+              Create and customize your website chatbot
+            </p>
+          </div>
+        </div>
+        
+        <Tabs defaultValue="basic" value={activeTab} onValueChange={setActiveTab} className="w-full">
+          <TabsList className="grid w-full grid-cols-3 lg:w-[400px]">
+            <TabsTrigger value="basic">Basic</TabsTrigger>
+            <TabsTrigger value="appearance">Appearance</TabsTrigger>
+            <TabsTrigger value="preview">Preview</TabsTrigger>
+          </TabsList>
+          
+          <TabsContent value="basic" className="space-y-4 mt-4">
+            <Card>
+              <CardHeader>
+                <CardTitle>Company Information</CardTitle>
+                <CardDescription>
+                  This information helps your chatbot provide accurate responses about your business
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="companyName">Company Name</Label>
+                    <Input 
+                      id="companyName" 
+                      name="companyName" 
+                      value={companyInfo.companyName} 
+                      onChange={handleCompanyInfoChange}
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="industry">Industry</Label>
+                    <Select 
+                      defaultValue={companyInfo.industry}
+                      onValueChange={(value) => setCompanyInfo({...companyInfo, industry: value})}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select industry" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Technology">Technology</SelectItem>
+                        <SelectItem value="E-commerce">E-commerce</SelectItem>
+                        <SelectItem value="Healthcare">Healthcare</SelectItem>
+                        <SelectItem value="Education">Education</SelectItem>
+                        <SelectItem value="Finance">Finance</SelectItem>
+                        <SelectItem value="Real Estate">Real Estate</SelectItem>
+                        <SelectItem value="Travel">Travel</SelectItem>
+                        <SelectItem value="Other">Other</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="targetAudience">Target Audience</Label>
+                  <Textarea 
+                    id="targetAudience" 
+                    name="targetAudience" 
+                    value={companyInfo.targetAudience} 
+                    onChange={handleCompanyInfoChange}
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="brandVoice">Brand Voice</Label>
+                  <Textarea 
+                    id="brandVoice" 
+                    name="brandVoice" 
+                    value={companyInfo.brandVoice} 
+                    onChange={handleCompanyInfoChange}
+                    placeholder="Describe how your brand communicates (e.g., friendly, professional, casual)"
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="services">Services/Products</Label>
+                  <Textarea 
+                    id="services" 
+                    name="services" 
+                    value={companyInfo.services} 
+                    onChange={handleCompanyInfoChange}
+                    placeholder="Describe what your company offers to customers"
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="valueProposition">Value Proposition</Label>
+                  <Textarea 
+                    id="valueProposition" 
+                    name="valueProposition" 
+                    value={companyInfo.valueProposition} 
+                    onChange={handleCompanyInfoChange}
+                    placeholder="What makes your company unique and why should customers choose you?"
+                  />
+                </div>
+                
+                <Button onClick={() => setActiveTab("appearance")} className="w-full md:w-auto">
+                  Continue to Appearance
+                </Button>
+              </CardContent>
+            </Card>
+          </TabsContent>
+          
+          <TabsContent value="appearance" className="space-y-4 mt-4">
+            <Card>
+              <CardHeader>
+                <CardTitle>Chatbot Appearance</CardTitle>
+                <CardDescription>
+                  Customize how your chatbot looks and behaves on your website
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="primaryColor">Primary Color</Label>
+                    <div className="flex items-center space-x-2">
+                      <Input 
+                        id="primaryColor" 
+                        type="color" 
+                        value={chatbotSettings.primaryColor} 
+                        onChange={(e) => handleSettingChange("primaryColor", e.target.value)}
+                        className="w-12 h-10 p-1"
+                      />
+                      <Input 
+                        value={chatbotSettings.primaryColor} 
+                        onChange={(e) => handleSettingChange("primaryColor", e.target.value)}
+                        className="flex-1"
+                      />
+                    </div>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="position">Position on Website</Label>
+                    <Select 
+                      defaultValue={chatbotSettings.position}
+                      onValueChange={(value) => handleSettingChange("position", value)}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select position" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="bottom-right">Bottom Right</SelectItem>
+                        <SelectItem value="bottom-left">Bottom Left</SelectItem>
+                        <SelectItem value="top-right">Top Right</SelectItem>
+                        <SelectItem value="top-left">Top Left</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="initialMessage">Initial Message</Label>
+                  <Textarea 
+                    id="initialMessage" 
+                    value={chatbotSettings.initialMessage} 
+                    onChange={(e) => handleSettingChange("initialMessage", e.target.value)}
+                    placeholder="This is the first message visitors will see when the chatbot opens"
+                  />
+                </div>
+                
+                <div className="flex items-center space-x-2">
+                  <Switch 
+                    id="collectEmail" 
+                    checked={chatbotSettings.collectEmail} 
+                    onCheckedChange={(checked) => handleSettingChange("collectEmail", checked)}
+                  />
+                  <Label htmlFor="collectEmail">
+                    Ask for visitor's email before starting chat
+                  </Label>
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="responseTime">Response Time</Label>
+                  <Select 
+                    defaultValue={chatbotSettings.responseTime}
+                    onValueChange={(value) => handleSettingChange("responseTime", value)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select response time" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="instant">Instant</SelectItem>
+                      <SelectItem value="fast">Fast (500-1000ms)</SelectItem>
+                      <SelectItem value="moderate">Moderate (1-2s)</SelectItem>
+                      <SelectItem value="realistic">Realistic (2-3s)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                <div className="flex justify-between">
+                  <Button variant="outline" onClick={() => setActiveTab("basic")}>
+                    Back to Basic
+                  </Button>
+                  <Button onClick={() => setActiveTab("preview")}>
+                    Continue to Preview
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+          
+          <TabsContent value="preview" className="space-y-4 mt-4">
+            <Card>
+              <CardHeader>
+                <CardTitle>Preview Your Chatbot</CardTitle>
+                <CardDescription>
+                  See how your chatbot will appear on your website
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="flex flex-col lg:flex-row gap-6">
+                  <div className="lg:w-2/3">
+                    <ChatbotPreview 
+                      companyName={companyInfo.companyName}
+                      companyInfo={companyInfo}
+                      onApprove={handleApprove}
+                      onEdit={handleEdit}
+                    />
+                  </div>
+                  
+                  <div className="lg:w-1/3 space-y-4">
+                    <div className="bg-primary/5 p-4 rounded-lg">
+                      <h3 className="font-medium mb-2">What Happens Next?</h3>
+                      <ol className="list-decimal list-inside space-y-2 text-sm">
+                        <li>
+                          Review your chatbot to ensure it represents your brand correctly
+                        </li>
+                        <li>
+                          Approve and deploy the chatbot to your website
+                        </li>
+                        <li>
+                          Your chatbot will begin collecting questions from visitors
+                        </li>
+                        <li>
+                          Questions and answers will be added to the AEO Management section for your review
+                        </li>
+                        <li>
+                          Approve content to publish it to your website with SEO optimization
+                        </li>
+                      </ol>
+                    </div>
+                    
+                    <div className="bg-yellow-50 border border-yellow-200 p-4 rounded-lg">
+                      <h3 className="font-medium text-yellow-800 mb-2">Important Note</h3>
+                      <p className="text-sm text-yellow-700">
+                        All chatbot answers and content will require your approval before being published to your website. You maintain full control over what appears on your site.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
+      </div>
+    </DashboardLayout>
+  );
+}

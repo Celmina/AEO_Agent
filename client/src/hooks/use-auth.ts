@@ -17,18 +17,20 @@ export interface AuthContextType {
 const initialState: AuthContextType = {
   user: null,
   isAuthenticated: false,
-  isLoading: false,
-  login: () => Promise.reject(new Error('Not implemented')),
-  register: () => Promise.reject(new Error('Not implemented')),
-  logout: () => Promise.reject(new Error('Not implemented')),
+  isLoading: true,
+  login: async () => {
+    throw new Error('AuthContext not initialized');
+  },
+  register: async () => {
+    throw new Error('AuthContext not initialized');
+  },
+  logout: async () => {
+    throw new Error('AuthContext not initialized');
+  },
 };
 
 export const AuthContext = createContext<AuthContextType>(initialState);
 
 export function useAuth() {
-  const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
-  return context;
+  return useContext(AuthContext);
 }
