@@ -16,6 +16,80 @@ function hashString(str: string): number {
   return hash;
 }
 
+// Helper functions for content extraction
+function extractFromScrapedContent(data: any, field: string): string | null {
+  if (!data) return null;
+  
+  // Direct field access
+  if (data[field]) return data[field];
+  
+  // Common fields in scraped content
+  if (field === 'industry' && data.aboutContent) {
+    return extractIndustryFromText(data.aboutContent);
+  }
+  
+  if (field === 'services' && data.mainContent) {
+    return extractServicesFromText(data.mainContent);
+  }
+  
+  if (field === 'valueProposition' && data.mainContent) {
+    return extractValuePropositionFromText(data.mainContent);
+  }
+  
+  return null;
+}
+
+function extractIndustryFromText(text: string): string | null {
+  const industries = ['technology', 'healthcare', 'finance', 'education', 'retail', 
+                      'manufacturing', 'hospitality', 'construction', 'professional services'];
+  
+  for (const industry of industries) {
+    if (text.toLowerCase().includes(industry)) {
+      return industry.charAt(0).toUpperCase() + industry.slice(1);
+    }
+  }
+  
+  return null;
+}
+
+function extractServicesFromText(text: string): string | null {
+  // Look for phrases like "we offer" or "our services"
+  const servicePatterns = [
+    /we offer (.*?)\./i,
+    /our services include (.*?)\./i,
+    /we provide (.*?)\./i,
+    /specialized in (.*?)\./i
+  ];
+  
+  for (const pattern of servicePatterns) {
+    const match = text.match(pattern);
+    if (match && match[1]) {
+      return match[1].trim();
+    }
+  }
+  
+  return null;
+}
+
+function extractValuePropositionFromText(text: string): string | null {
+  // Look for value proposition phrases
+  const vpPatterns = [
+    /we help (.*?)\./i,
+    /our mission is (.*?)\./i,
+    /committed to (.*?)\./i,
+    /dedicated to (.*?)\./i
+  ];
+  
+  for (const pattern of vpPatterns) {
+    const match = text.match(pattern);
+    if (match && match[1]) {
+      return match[0].trim(); // Return the full match including "we help", etc.
+    }
+  }
+  
+  return null;
+}
+
 /**
  * Create a new chatbot for a website
  */
@@ -634,12 +708,13 @@ export async function sendMessage(req: Request, res: Response) {
     // Get company info for AI context with detailed error handling
     let companyInfo: any = null;
     try {
-      const profile = await db.query.companyProfiles.findFirst({
-        where: eq(companyProfiles.userId, session.chatbot.userId)
-      });
+      const profiles = await db
+        .select()
+        .from(companyProfiles)
+        .where(eq(companyProfiles.userId, session.chatbot.userId));
       
-      if (profile) {
-        companyInfo = profile;
+      if (profiles && profiles.length > 0) {
+        companyInfo = profiles[0];
         log(`Found company profile for chatbot's user ID ${session.chatbot.userId}`, 'chatbot');
       }
     } catch (dbError) {
@@ -694,81 +769,6 @@ export async function sendMessage(req: Request, res: Response) {
         services: "Products and services",
         valueProposition: `Information and assistance for ${session.chatbot?.website?.domain || "our website"}`
       };
-    }
-    
-    // Helper function to extract data from scraped content
-    function extractFromScrapedContent(data: any, field: string): string | null {
-      if (!data) return null;
-      
-      // Direct field access
-      if (data[field]) return data[field];
-      
-      // Common fields in scraped content
-      if (field === 'industry' && data.aboutContent) {
-        return extractIndustryFromText(data.aboutContent);
-      }
-      
-      if (field === 'services' && data.mainContent) {
-        return extractServicesFromText(data.mainContent);
-      }
-      
-      if (field === 'valueProposition' && data.mainContent) {
-        return extractValuePropositionFromText(data.mainContent);
-      }
-      
-      return null;
-    }
-    
-    // Simplified extraction functions
-    function extractIndustryFromText(text: string): string | null {
-      const industries = ['technology', 'healthcare', 'finance', 'education', 'retail', 
-                          'manufacturing', 'hospitality', 'construction', 'professional services'];
-      
-      for (const industry of industries) {
-        if (text.toLowerCase().includes(industry)) {
-          return industry.charAt(0).toUpperCase() + industry.slice(1);
-        }
-      }
-      
-      return null;
-    }
-    
-    function extractServicesFromText(text: string): string | null {
-      // Look for phrases like "we offer" or "our services"
-      const servicePatterns = [
-        /we offer (.*?)\./i,
-        /our services include (.*?)\./i,
-        /we provide (.*?)\./i,
-        /specialized in (.*?)\./i
-      ];
-      
-      for (const pattern of servicePatterns) {
-        const match = text.match(pattern);
-        if (match && match[1]) {
-          return match[1].trim();
-        }
-      }
-      
-      return null;
-    }
-    
-    function extractValuePropositionFromText(text: string): string | null {
-      // Look for value proposition phrases
-      const vpPatterns = [
-        /we help (.*?)\./i,
-        /our mission is (.*?)\./i,
-        /committed to (.*?)\./i,
-        /dedicated to (.*?)\./i
-      ];
-      
-      for (const pattern of vpPatterns) {
-        const match = text.match(pattern);
-        if (match && match[1]) {
-          return match[0].trim(); // Return the full match including "we help", etc.
-        }
-      }
-      
-      return null;
     }
 
     // Create context for AI

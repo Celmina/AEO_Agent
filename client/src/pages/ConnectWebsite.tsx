@@ -46,8 +46,8 @@ export default function ConnectWebsite() {
       queryClient.invalidateQueries({ queryKey: ["/api/websites"] });
       setSiteId(data.id.toString());
       toast({
-        title: "Website registered",
-        description: "Your website has been registered. Now add the code snippet to complete the connection.",
+        title: "Website Registered Successfully!",
+        description: "Your website is now registered with ecom.ai. Add the chatbot script to your website to complete the integration.",
       });
     },
     onError: () => {
@@ -186,8 +186,8 @@ export default function ConnectWebsite() {
                       </svg>
                     </div>
                     <p className="mt-2 text-sm text-blue-700">
-                      <strong>Important:</strong> Your website is registered but not yet connected. To complete the connection, add the AI chatbot 
-                      code below to your website by pasting it right before the closing <code className="bg-blue-100 px-1 py-0.5 rounded text-xs">&lt;/body&gt;</code> tag.
+                      <strong>Important:</strong> Your website data has been processed. Our system will automatically scan and analyze your content to create a personalized
+                      AI chatbot. To complete the connection, paste the code below right before the closing <code className="bg-blue-100 px-1 py-0.5 rounded text-xs">&lt;/body&gt;</code> tag of your website.
                     </p>
                     <CodeSnippet code={jsSnippet} language="html" className="mt-3" />
                   </div>

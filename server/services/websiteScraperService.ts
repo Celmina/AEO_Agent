@@ -47,8 +47,9 @@ export async function scrapeWebsite(url: string, websiteId: number): Promise<boo
     // Save raw content to website record
     await db.update(websites)
       .set({ 
-        scrapedContent: JSON.stringify(content),
-        lastScraped: new Date()
+        scrapedContent: JSON.stringify(content) as any,
+        lastScraped: new Date(),
+        scrapingStatus: 'completed'
       })
       .where(eq(websites.id, websiteId));
     
@@ -87,11 +88,11 @@ export async function scrapeWebsite(url: string, websiteId: number): Promise<boo
         })
         .where(eq(companyProfiles.userId, websiteRecord.userId));
     } else {
-      // Create new profile
+      // Create new profile with default values for nullable fields
       await db.insert(companyProfiles)
         .values({
           userId: websiteRecord.userId,
-          companyName: profile.companyName || websiteRecord.name,
+          companyName: profile.companyName || websiteRecord.name || 'Website',
           industry: profile.industry || 'Not specified',
           targetAudience: profile.targetAudience || 'General audience',
           brandVoice: profile.brandVoice || 'Professional',
@@ -99,7 +100,7 @@ export async function scrapeWebsite(url: string, websiteId: number): Promise<boo
           valueProposition: profile.valueProposition || 'Value proposition not specified',
           createdAt: new Date(),
           updatedAt: new Date()
-        });
+        } as any);
     }
     
     log(`Successfully scraped and processed website ${url}`, 'scraper');
