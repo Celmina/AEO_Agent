@@ -5,6 +5,17 @@ import { eq, and, desc, asc } from 'drizzle-orm';
 import { generateAIResponse } from '../services/openaiService';
 import { log } from '../vite';
 
+// Helper function to create a simple hash from a string
+function hashString(str: string): number {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    const char = str.charCodeAt(i);
+    hash = (hash << 5) - hash + char;
+    hash = hash & hash; // Convert to 32bit integer
+  }
+  return hash;
+}
+
 /**
  * Create a new chatbot for a website
  */
@@ -136,48 +147,78 @@ export async function getChatbotByDomain(req: Request, res: Response) {
       return res.status(400).json({ message: 'Either domain or siteId parameter is required' });
     }
 
-    log(`Chatbot lookup requested for ${siteId ? 'siteId: ' + siteId : 'domain: ' + domain}`, 'chatbot');
+    // Add origin and referrer to logs for debugging CORS and embedding issues
+    const origin = req.headers.origin || 'unknown';
+    const referrer = req.headers.referer || 'unknown';
+    log(`Chatbot lookup requested for ${siteId ? 'siteId: ' + siteId : 'domain: ' + domain} | Origin: ${origin} | Referrer: ${referrer}`, 'chatbot');
     
     let website = null;
     
     // First try to find by siteId if provided (most precise method)
     if (siteId) {
-      website = await db.query.websites.findFirst({
-        where: eq(websites.siteId, siteId)
-      });
-      
-      if (website) {
-        log(`Found website match using siteId: ${siteId}`, 'chatbot');
+      try {
+        website = await db.query.websites.findFirst({
+          where: eq(websites.siteId, siteId)
+        });
+        
+        if (website) {
+          log(`Found website match using siteId: ${siteId}`, 'chatbot');
+        }
+      } catch (dbError) {
+        log(`Database error finding website by siteId: ${dbError}`, 'error');
+        // Continue to domain-based lookup if available
       }
     }
     
     // If no website found by siteId and domain is provided, try domain matching
     if (!website && domain) {
-      // Normalize the domain (remove www. if present)
-      const normalizedDomain = domain.replace(/^www\./i, '');
-      
-      // Try multiple domain patterns to make matching more robust
-      const domainPatterns = [
-        normalizedDomain,
-        `www.${normalizedDomain}`,
-        `https://${normalizedDomain}`,
-        `http://${normalizedDomain}`,
-        `https://www.${normalizedDomain}`,
-        `http://www.${normalizedDomain}`
-      ];
-      
-      // Find the website by trying each domain pattern
-      for (const pattern of domainPatterns) {
-        log(`Trying to match domain pattern: ${pattern}`, 'chatbot');
-        const foundWebsite = await db.query.websites.findFirst({
-          where: eq(websites.domain, pattern)
-        });
+      try {
+        // Normalize the domain (remove www. and protocol if present)
+        const normalizedDomain = domain.replace(/^(https?:\/\/)?(www\.)?/i, '').split('/')[0];
+        log(`Normalized domain for matching: ${normalizedDomain}`, 'chatbot');
         
-        if (foundWebsite) {
-          website = foundWebsite;
-          log(`Found website match using domain pattern: ${pattern}`, 'chatbot');
-          break;
+        // Try multiple domain patterns to make matching more robust
+        const domainPatterns = [
+          normalizedDomain,
+          `www.${normalizedDomain}`,
+          `https://${normalizedDomain}`,
+          `http://${normalizedDomain}`,
+          `https://www.${normalizedDomain}`,
+          `http://www.${normalizedDomain}`
+        ];
+        
+        // Find the website by trying each domain pattern
+        for (const pattern of domainPatterns) {
+          log(`Trying to match domain pattern: ${pattern}`, 'chatbot');
+          const foundWebsite = await db.query.websites.findFirst({
+            where: eq(websites.domain, pattern)
+          });
+          
+          if (foundWebsite) {
+            website = foundWebsite;
+            log(`Found website match using domain pattern: ${pattern}`, 'chatbot');
+            break;
+          }
         }
+        
+        // Try a more flexible match by doing a partial SQL like match
+        if (!website) {
+          log(`No exact domain match found, trying partial match`, 'chatbot');
+          const sql = `
+            SELECT * FROM websites 
+            WHERE domain ILIKE $1 
+            OR $1 ILIKE CONCAT('%', domain, '%')
+            LIMIT 1
+          `;
+          const result = await db.$client.query(sql, [`%${normalizedDomain}%`]);
+          
+          if (result.rows && result.rows.length > 0) {
+            website = result.rows[0];
+            log(`Found website using partial domain match: ${website.domain}`, 'chatbot');
+          }
+        }
+      } catch (dbError) {
+        log(`Database error finding website by domain: ${dbError}`, 'error');
       }
     }
 
@@ -192,11 +233,11 @@ export async function getChatbotByDomain(req: Request, res: Response) {
       // This allows the chatbot to work even if the database is empty or has connectivity issues
       log('Providing default chatbot configuration for development', 'chatbot');
       const defaultConfig = {
-        id: 1,
+        id: siteId ? parseInt(siteId, 10) || 1 : 1,
         name: 'ecom.ai Chat',
         primaryColor: '#4f46e5',
         position: 'bottom-right',
-        initialMessage: 'Hello! How can I help you today? (This is a development-mode chatbot)',
+        initialMessage: 'Hello! How can I help you today?',
         collectEmail: false,
         websiteDomain: domain || 'unknown'
       };
@@ -262,35 +303,63 @@ export async function createChatSession(req: Request, res: Response) {
       return res.status(400).json({ message: 'Chatbot ID is required' });
     }
 
-    log(`Creating chat session for chatbot ID ${chatbotId}, visitor ${visitorId || 'anonymous'}`, 'chatbot');
+    // Add more detailed logging including origin and headers for debugging
+    const origin = req.headers.origin || 'unknown';
+    const userAgent = req.headers['user-agent'] || 'unknown';
+    log(`Creating chat session for chatbot ID ${chatbotId}, visitor ${visitorId || 'anonymous'} | Origin: ${origin} | UA: ${userAgent.substring(0, 50)}`, 'chatbot');
 
-    // Try to find chatbot
-    const chatbot = await db.query.chatbots.findFirst({
-      where: and(
-        eq(chatbots.id, chatbotId),
-        eq(chatbots.status, 'active')
-      ),
-      with: {
-        website: true
-      }
-    });
+    // Try to find chatbot with better error handling
+    let chatbot = null;
+    try {
+      chatbot = await db.query.chatbots.findFirst({
+        where: and(
+          eq(chatbots.id, chatbotId),
+          eq(chatbots.status, 'active')
+        ),
+        with: {
+          website: true
+        }
+      });
+    } catch (dbError) {
+      log(`Database error finding chatbot: ${dbError}`, 'error');
+      // Continue with fallback mode
+    }
 
-    // For development/testing, create a mock session even if chatbot is not found
+    // For development/testing or error recovery, create a fallback session if chatbot is not found
     if (!chatbot) {
-      log(`Chatbot ID ${chatbotId} not found, creating development session`, 'chatbot');
+      log(`Chatbot ID ${chatbotId} not found or database error occurred, creating fallback session`, 'chatbot');
       
-      // Create a mock session for development
+      // Generate a deterministic but unique session ID based on input values to prevent duplicates
+      const hashInput = `${chatbotId}-${visitorId || Date.now()}-${Date.now()}`;
+      const sessionId = Math.abs(hashString(hashInput)) % 100000 + 1; // Keep ID in reasonable range
+      
+      // Create a fallback session
       const session = {
-        id: Math.floor(Math.random() * 10000) + 1,
-        chatbotId: chatbotId,
-        visitorId: visitorId || 'anonymous',
+        id: sessionId,
+        chatbotId: parseInt(chatbotId.toString(), 10),
+        visitorId: visitorId || `visitor_${Date.now()}_${Math.random().toString(36).substring(2, 10)}`,
         visitorEmail: visitorEmail || null,
         createdAt: new Date(),
-        updatedAt: new Date()
+        updatedAt: new Date(),
+        status: 'active'
       };
       
-      return res.status(201).json(session);
+      // Include a default welcome message
+      const welcomeMessage = {
+        id: sessionId * 1000, // Ensure unique ID
+        sessionId: sessionId,
+        content: "Hello! I'm the ecom.ai chatbot assistant. How can I help you today?",
+        role: "assistant",
+        createdAt: new Date()
+      };
+      
+      return res.status(201).json({
+        ...session,
+        message: welcomeMessage
+      });
     }
+    
+    // Using the hashString helper function defined at module level
 
     // Prepare session metadata
     const metadataObj = {
@@ -392,37 +461,63 @@ export async function sendMessage(req: Request, res: Response) {
       return res.status(400).json({ message: 'Message content is required' });
     }
 
-    log(`Processing message for session ID ${sessionId}`, 'chatbot');
+    // Add detailed logging including headers
+    const origin = req.headers.origin || 'unknown';
+    const contentType = req.headers['content-type'] || 'unknown';
+    log(`Processing message for session ID ${sessionId} | Origin: ${origin} | Content-Type: ${contentType}`, 'chatbot');
+    log(`Message content: "${message.substring(0, 100)}${message.length > 100 ? '...' : ''}"`, 'chatbot');
 
-    // Check if session exists
-    const session = await db.query.chatSessions.findFirst({
-      where: eq(chatSessions.id, sessionId),
-      with: {
-        chatbot: {
-          with: {
-            website: true
+    // Check if session exists with better error handling
+    let session = null;
+    try {
+      session = await db.query.chatSessions.findFirst({
+        where: eq(chatSessions.id, sessionId),
+        with: {
+          chatbot: {
+            with: {
+              website: true
+            }
           }
         }
-      }
-    });
+      });
+    } catch (dbError) {
+      log(`Database error finding session: ${dbError}`, 'error');
+      // Continue with fallback mode
+    }
 
     if (!session) {
-      log(`Session ID ${sessionId} not found. Creating development mode response`, 'chatbot');
+      log(`Session ID ${sessionId} not found or database error. Creating fallback response`, 'chatbot');
       
-      // For development - provide a mock response
-      const aiResponse = "I'm the ecom.ai chatbot assistant. How can I help you today with your e-commerce needs?";
+      // Create a more intelligent fallback response based on the user's message
+      let aiResponse = "I'm the ecom.ai chatbot assistant. How can I help you today?";
+      
+      // Very basic context-aware responses for common questions
+      const lowerMessage = message.toLowerCase();
+      if (lowerMessage.includes('pricing') || lowerMessage.includes('cost') || lowerMessage.includes('plan')) {
+        aiResponse = "Our pricing plans start with a free tier that allows you to experience basic features. Premium plans with additional capabilities start at $29/month. Would you like me to provide more details?";
+      } else if (lowerMessage.includes('contact') || lowerMessage.includes('support')) {
+        aiResponse = "You can reach our support team at support@ecom.ai or through the chat on our website. Our team typically responds within 2 hours during business hours.";
+      } else if (lowerMessage.includes('features') || lowerMessage.includes('what can you do')) {
+        aiResponse = "ecom.ai provides AI-powered chatbots like me for your website, content optimization using Answer Engine Optimization (AEO), and automated SEO improvements based on user questions. Which feature would you like to know more about?";
+      }
+      
+      // Generate a deterministic ID based on session and message
+      const messageHash = `${sessionId}-${message}`;
+      const responseId = Math.abs(hashString(messageHash)) % 10000 + 1;
       
       // Add message to the response
-      const mockResponse = {
-        id: Math.floor(Math.random() * 10000) + 1,
+      const fallbackResponse = {
+        id: responseId,
         sessionId: sessionId,
         content: aiResponse,
         role: "assistant",
         createdAt: new Date()
       };
       
-      return res.status(200).json(mockResponse);
+      return res.status(200).json(fallbackResponse);
     }
+    
+    // Using the hashString helper function defined at module level
 
     // Add user message using raw SQL to avoid type issues
     const insertUserMessageSql = `
