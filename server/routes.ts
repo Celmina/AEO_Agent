@@ -13,6 +13,7 @@ import * as websitesController from "./controllers/websites";
 import * as companiesController from "./controllers/companies";
 import * as campaignsController from "./controllers/campaigns";
 import * as statsController from "./controllers/stats";
+import * as chatbotController from "./controllers/chatbot";
 
 // Middleware
 import { isAuthenticated } from "./middleware/auth";
@@ -103,6 +104,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/stats/dashboard", isAuthenticated, statsController.getDashboardStats);
   app.get("/api/stats/engagement", isAuthenticated, statsController.getEngagementStats);
   app.get("/api/stats/audience", isAuthenticated, statsController.getAudienceStats);
+  
+  // Chatbot routes (authenticated)
+  app.post("/api/chatbots", isAuthenticated, chatbotController.createChatbot);
+  app.get("/api/chatbots/:id", isAuthenticated, chatbotController.getChatbot);
+  app.put("/api/chatbots/:id", isAuthenticated, chatbotController.updateChatbot);
+
+  // Public chatbot API
+  app.get("/api/public/chatbot", chatbotController.getChatbotByDomain);
+  app.post("/api/public/chat-sessions", chatbotController.createChatSession);
+  app.post("/api/public/chat-sessions/:sessionId/messages", chatbotController.sendMessage);
+  app.get("/api/public/chat-sessions/:sessionId/messages", chatbotController.getMessages);
 
   const httpServer = createServer(app);
 
