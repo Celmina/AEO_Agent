@@ -1,3 +1,5 @@
+import React from 'react';
+import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 
 interface DashboardStatsCardProps {
@@ -15,37 +17,56 @@ export function DashboardStatsCard({
   title,
   value,
   change,
-  className,
+  className
 }: DashboardStatsCardProps) {
+  const isPositive = change >= 0;
+  
+  const getIconColorClass = () => {
+    switch (iconColor) {
+      case 'primary':
+        return 'bg-primary/10 text-primary';
+      case 'secondary':
+        return 'bg-blue-50 text-blue-600';
+      case 'accent':
+        return 'bg-purple-50 text-purple-600';
+      case 'success':
+        return 'bg-green-50 text-green-600';
+      default:
+        return 'bg-primary/10 text-primary';
+    }
+  };
+  
   return (
-    <div className={cn("bg-white overflow-hidden shadow rounded-lg", className)}>
-      <div className="px-4 py-5 sm:p-6">
-        <div className="flex items-center">
-          <div className={cn("flex-shrink-0 rounded-md p-3", `bg-${iconColor}/10`)}>
-            <i className={cn(icon, `text-${iconColor}`)}></i>
+    <Card className={cn("overflow-hidden", className)}>
+      <CardContent className="p-6">
+        <div className="flex items-start justify-between">
+          <div>
+            <p className="text-sm font-medium text-gray-500">{title}</p>
+            <p className="mt-2 text-3xl font-bold">{value}</p>
+            <div className="mt-1">
+              <span className={cn(
+                "inline-flex items-center text-sm font-medium",
+                isPositive ? "text-green-600" : "text-red-600"
+              )}>
+                <span className={cn(
+                  "mr-1",
+                  isPositive ? "text-green-600" : "text-red-600"
+                )}>
+                  <i className={`fas fa-arrow-${isPositive ? 'up' : 'down'}`}></i>
+                </span>
+                {Math.abs(change)}%
+                <span className="ml-1 text-gray-500">vs. last month</span>
+              </span>
+            </div>
           </div>
-          <div className="ml-5 w-0 flex-1">
-            <dl>
-              <dt className="text-sm font-medium text-gray-500 truncate">{title}</dt>
-              <dd className="flex items-baseline">
-                <div className="text-2xl font-semibold text-gray-900">{value}</div>
-                {change !== 0 && (
-                  <div
-                    className={cn(
-                      "ml-2 flex items-baseline text-sm font-semibold",
-                      change > 0 ? "text-success" : "text-error"
-                    )}
-                  >
-                    <i className={cn("fas", change > 0 ? "fa-arrow-up" : "fa-arrow-down")}></i>
-                    <span className="sr-only">{change > 0 ? "Increased by" : "Decreased by"}</span>
-                    {Math.abs(change)}%
-                  </div>
-                )}
-              </dd>
-            </dl>
+          <div className={cn(
+            "flex h-12 w-12 items-center justify-center rounded-lg",
+            getIconColorClass()
+          )}>
+            <i className={`${icon} text-xl`}></i>
           </div>
         </div>
-      </div>
-    </div>
+      </CardContent>
+    </Card>
   );
 }

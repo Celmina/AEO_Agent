@@ -249,7 +249,7 @@ export default function LandingPage() {
                 </div>
                 <h3 className="mt-6 text-xl font-medium text-gray-900">Connect your website</h3>
                 <p className="mt-2 text-center text-gray-500">
-                  Install our JavaScript snippet or use one of our plugins for popular CMS platforms like WordPress or Shopify.
+                  Install our JavaScript snippet on your website to enable the AI chatbot and prepare for AEO content.
                 </p>
               </div>
 
@@ -260,7 +260,7 @@ export default function LandingPage() {
                 </div>
                 <h3 className="mt-6 text-xl font-medium text-gray-900">Start optimizing</h3>
                 <p className="mt-2 text-center text-gray-500">
-                  Use our dashboard to monitor performance, create campaigns, and grow your audience.
+                  Review and approve AEO content generated from real user questions to your chatbot.
                 </p>
               </div>
             </div>
