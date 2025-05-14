@@ -70,7 +70,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
       {/* Sidebar */}
       <div className="w-full md:w-64 bg-white border-r">
         <div className="p-4 border-b">
-          <h1 className="text-xl font-bold text-primary">MarkSync</h1>
+          <h1 className="text-xl font-bold text-primary">ecom.ai</h1>
           <p className="text-xs text-gray-500">Chatbot & AEO Platform</p>
         </div>
         

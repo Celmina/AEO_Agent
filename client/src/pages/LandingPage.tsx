@@ -13,7 +13,7 @@ export default function LandingPage() {
           <div className="flex justify-between h-16">
             <div className="flex">
               <div className="flex-shrink-0 flex items-center">
-                <span className="text-primary font-bold text-2xl">MarkSync</span>
+                <span className="text-primary font-bold text-2xl">ecom.ai</span>
               </div>
               <div className="hidden sm:ml-6 sm:flex sm:space-x-8">
                 <a href="#features" className="border-transparent text-gray-600 hover:text-gray-900 hover:border-primary inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">Features</a>
@@ -439,7 +439,7 @@ export default function LandingPage() {
                   <i className="fas fa-star"></i>
                 </div>
               </div>
-              <p className="text-gray-600 italic">"MarkSync has transformed our marketing strategy. The analytics provide insights we never had before, and our engagement rates have increased by 40%."</p>
+              <p className="text-gray-600 italic">"ecom.ai has transformed our marketing strategy. The analytics provide insights we never had before, and our engagement rates have increased by 40%."</p>
               <div className="mt-4 flex items-center">
                 <div className="ml-4">
                   <h4 className="text-sm font-bold text-gray-900">Sarah Johnson</h4>
@@ -459,7 +459,7 @@ export default function LandingPage() {
                   <i className="fas fa-star"></i>
                 </div>
               </div>
-              <p className="text-gray-600 italic">"The ease of integration was what sold us, but the results keep us coming back. Our email open rates have doubled since implementing MarkSync."</p>
+              <p className="text-gray-600 italic">"The ease of integration was what sold us, but the results keep us coming back. Our email open rates have doubled since implementing ecom.ai."</p>
               <div className="mt-4 flex items-center">
                 <div className="ml-4">
                   <h4 className="text-sm font-bold text-gray-900">Mike Peters</h4>
