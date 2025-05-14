@@ -4,6 +4,7 @@ import { chatbots, chatSessions, chatMessages, aeoContent, websites, companyProf
 import { eq, and, desc, asc } from 'drizzle-orm';
 import { generateAIResponse } from '../services/openaiService';
 import { log } from '../vite';
+import { pool } from '../db';
 
 // Helper function to create a simple hash from a string
 function hashString(str: string): number {
@@ -708,13 +709,15 @@ export async function sendMessage(req: Request, res: Response) {
     // Get company info for AI context with detailed error handling
     let companyInfo: any = null;
     try {
-      const profiles = await db
-        .select()
-        .from(companyProfiles)
-        .where(eq(companyProfiles.userId, session.chatbot.userId));
+      // Use a direct SQL query to ensure we get the most reliable data
+      const profileResult = await pool.query(`
+        SELECT * FROM company_profiles 
+        WHERE user_id = $1 
+        LIMIT 1
+      `, [session.chatbot.userId]);
       
-      if (profiles && profiles.length > 0) {
-        companyInfo = profiles[0];
+      if (profileResult && profileResult.rows && profileResult.rows.length > 0) {
+        companyInfo = profileResult.rows[0];
         log(`Found company profile for chatbot's user ID ${session.chatbot.userId}`, 'chatbot');
       }
     } catch (dbError) {
@@ -724,34 +727,46 @@ export async function sendMessage(req: Request, res: Response) {
     // If no company profile is found, try to extract info from website
     if (!companyInfo) {
       try {
-        // Get the website data which might contain scraped content
-        const website = await db.query.websites.findFirst({
-          where: eq(websites.id, session.chatbot.websiteId),
-        });
+        // Get the website data using direct SQL to avoid ORM issues
+        const websiteResult = await db.execute(`
+          SELECT * FROM websites 
+          WHERE id = $1
+        `, [session.chatbot.websiteId]);
         
-        if (website && website.scrapedContent) {
-          log(`Using scraped website content for chatbot context`, 'chatbot');
+        if (websiteResult && websiteResult.rows && websiteResult.rows.length > 0) {
+          const website = websiteResult.rows[0];
           
-          // Parse the scraped content
-          let scrapedData = {};
-          try {
-            scrapedData = JSON.parse(website.scrapedContent.toString());
-          } catch (parseError) {
-            log(`Error parsing scraped content: ${parseError}`, 'error');
+          if (website && website.scraped_content) {
+            log(`Using scraped website content for chatbot context`, 'chatbot');
+            
+            // Parse the scraped content
+            let scrapedData = {};
+            try {
+              scrapedData = JSON.parse(website.scraped_content.toString());
+              log(`Successfully parsed scraped content`, 'chatbot');
+            } catch (parseError) {
+              log(`Error parsing scraped content: ${parseError}`, 'error');
+            }
+            
+            // Create a company profile from the scraped data
+            companyInfo = {
+              companyName: website.name || "Website",
+              industry: extractFromScrapedContent(scrapedData, 'industry') || "General",
+              targetAudience: extractFromScrapedContent(scrapedData, 'targetAudience') || "Website visitors",
+              brandVoice: extractFromScrapedContent(scrapedData, 'brandVoice') || "Professional",
+              services: extractFromScrapedContent(scrapedData, 'services') || "Products and services",
+              valueProposition: extractFromScrapedContent(scrapedData, 'valueProposition') || 
+                                `Information about ${website.name || website.domain || "our website"}`,
+              websiteDomain: website.domain
+            };
+            
+            // Add additional log to verify data extraction
+            log(`Created company profile from website data: ${JSON.stringify(companyInfo).substring(0, 200)}...`, 'chatbot');
+          } else {
+            log(`No scraped content found for website ID ${session.chatbot.websiteId}`, 'chatbot');
           }
-          
-          // Create a company profile from the scraped data
-          companyInfo = {
-            companyName: website.name || "Website",
-            industry: extractFromScrapedContent(scrapedData, 'industry') || "General",
-            targetAudience: extractFromScrapedContent(scrapedData, 'targetAudience') || "Website visitors",
-            brandVoice: extractFromScrapedContent(scrapedData, 'brandVoice') || "Professional",
-            services: extractFromScrapedContent(scrapedData, 'services') || "Products and services",
-            valueProposition: extractFromScrapedContent(scrapedData, 'valueProposition') || 
-                              `Information about ${website.name || website.domain || "our website"}`
-          };
         } else {
-          log(`No website data with scraped content found`, 'chatbot');
+          log(`No website found with ID ${session.chatbot.websiteId}`, 'chatbot');
         }
       } catch (webError) {
         log(`Error accessing website data: ${webError}`, 'error');
