@@ -252,8 +252,8 @@ export async function createChatSession(req: Request, res: Response) {
       return res.status(404).json({ message: 'Chatbot not found or not active' });
     }
 
-    // Add more metadata about the visitor and session
-    const metadata = {
+    // Prepare session metadata
+    const metadataObj = {
       url: url || null,
       userAgent: req.headers['user-agent'] || null,
       referrer: req.headers['referer'] || null,
@@ -261,31 +261,72 @@ export async function createChatSession(req: Request, res: Response) {
       ipAddress: req.ip || req.socket.remoteAddress || null
     };
 
-    // Create new session
-    const sessionData = {
-      chatbotId: Number(chatbotId),
-      visitorEmail: visitorEmail || null,
-      visitorId: visitorId || `visitor_${Date.now()}_${Math.random().toString(36).substring(2, 10)}`,
-      metadata: JSON.stringify(metadata)
-    };
-    
-    const [newSession] = await db.insert(chatSessions)
-      .values(sessionData)
-      .returning();
+    // Create the new chat session directly with the SQL query
+    const insertSessionSql = `
+      INSERT INTO chat_sessions (
+        chatbot_id, 
+        visitor_email, 
+        visitor_id, 
+        metadata
+      ) 
+      VALUES (
+        $1, 
+        $2, 
+        $3, 
+        $4
+      )
+      RETURNING *
+    `;
 
-    // Determine appropriate initial message
-    const websiteName = chatbot.website?.domain.replace(/^(https?:\/\/)?(www\.)?/, '').split('/')[0];
-    const initialMessage = chatbot.initialMessage || 
-      `Hi there! How can I help you with information about ${websiteName || 'our website'}?`;
+    const visitorIdValue = visitorId || `visitor_${Date.now()}_${Math.random().toString(36).substring(2, 10)}`;
+    const metadataValue = JSON.stringify(metadataObj);
+
+    const sessionResult = await db.$client.query(insertSessionSql, [
+      Number(chatbotId),
+      visitorEmail || null,
+      visitorIdValue,
+      metadataValue
+    ]);
+
+    if (!sessionResult.rows || sessionResult.rows.length === 0) {
+      throw new Error('Failed to create chat session');
+    }
+
+    const newSession = sessionResult.rows[0];
+    
+    // Determine appropriate initial message based on website info
+    let initialMessage = chatbot.initialMessage;
+    if (!initialMessage) {
+      const domainName = chatbot.website?.domain.replace(/^(https?:\/\/)?(www\.)?/, '').split('/')[0];
+      initialMessage = `Hi there! How can I help you with information about ${domainName || 'our website'}?`;
+    }
 
     // Add initial message from chatbot
-    const [firstMessage] = await db.insert(chatMessages)
-      .values({
-        sessionId: newSession.id,
-        content: initialMessage,
-        role: 'assistant'
-      })
-      .returning();
+    const insertMessageSql = `
+      INSERT INTO chat_messages (
+        session_id, 
+        content, 
+        role
+      ) 
+      VALUES (
+        $1, 
+        $2, 
+        $3
+      )
+      RETURNING *
+    `;
+
+    const messageResult = await db.$client.query(insertMessageSql, [
+      newSession.id,
+      initialMessage,
+      'assistant'
+    ]);
+
+    if (!messageResult.rows || messageResult.rows.length === 0) {
+      throw new Error('Failed to create initial message');
+    }
+
+    const firstMessage = messageResult.rows[0];
 
     log(`Created chat session ID ${newSession.id} for chatbot ID ${chatbotId}`, 'chatbot');
 
@@ -311,6 +352,8 @@ export async function sendMessage(req: Request, res: Response) {
       return res.status(400).json({ message: 'Message content is required' });
     }
 
+    log(`Processing message for session ID ${sessionId}`, 'chatbot');
+
     // Check if session exists
     const session = await db.query.chatSessions.findFirst({
       where: eq(chatSessions.id, sessionId),
@@ -324,17 +367,32 @@ export async function sendMessage(req: Request, res: Response) {
     });
 
     if (!session) {
+      log(`Session ID ${sessionId} not found`, 'chatbot');
       return res.status(404).json({ message: 'Chat session not found' });
     }
 
-    // Add user message
-    const [userMessage] = await db.insert(chatMessages)
-      .values({
-        sessionId,
-        content: message,
-        role: 'user'
-      })
-      .returning();
+    // Add user message using raw SQL to avoid type issues
+    const insertUserMessageSql = `
+      INSERT INTO chat_messages (
+        session_id,
+        content,
+        role
+      )
+      VALUES ($1, $2, $3)
+      RETURNING *
+    `;
+
+    const userMessageResult = await db.$client.query(insertUserMessageSql, [
+      sessionId,
+      message,
+      'user'
+    ]);
+
+    if (!userMessageResult.rows || userMessageResult.rows.length === 0) {
+      throw new Error('Failed to save user message');
+    }
+
+    const userMessage = userMessageResult.rows[0];
 
     // Get company info for AI context
     const companyInfo = await db.query.companyProfiles.findFirst({
@@ -342,6 +400,7 @@ export async function sendMessage(req: Request, res: Response) {
     });
 
     if (!companyInfo) {
+      log(`No company profile found for user ID ${session.chatbot.userId}`, 'chatbot');
       return res.status(500).json({ message: 'Company information not found' });
     }
 
@@ -358,27 +417,56 @@ Website: ${session.chatbot.website.domain}
 
     try {
       // Generate AI response
+      log(`Generating AI response for message: "${message.substring(0, 100)}${message.length > 100 ? '...' : ''}"`, 'chatbot');
       const aiContent = await generateAIResponse(message, context);
       
-      // Add AI response message
-      const [aiMessage] = await db.insert(chatMessages)
-        .values({
-          sessionId,
-          content: aiContent,
-          role: 'assistant'
-        })
-        .returning();
+      // Add AI response message using raw SQL
+      const insertAiMessageSql = `
+        INSERT INTO chat_messages (
+          session_id,
+          content,
+          role
+        )
+        VALUES ($1, $2, $3)
+        RETURNING *
+      `;
+
+      const aiMessageResult = await db.$client.query(insertAiMessageSql, [
+        sessionId,
+        aiContent,
+        'assistant'
+      ]);
+
+      if (!aiMessageResult.rows || aiMessageResult.rows.length === 0) {
+        throw new Error('Failed to save AI response');
+      }
+
+      const aiMessage = aiMessageResult.rows[0];
       
-      // Create AEO content entry (for review)
-      await db.insert(aeoContent)
-        .values({
-          chatMessageId: userMessage.id,
-          userId: session.chatbot.userId,
-          websiteId: session.chatbot.websiteId,
-          question: message,
-          answer: aiContent,
-          status: 'pending'
-        });
+      // Create AEO content entry (for review) using raw SQL
+      const insertAeoContentSql = `
+        INSERT INTO aeo_content (
+          chat_message_id,
+          user_id,
+          website_id,
+          question,
+          answer,
+          status
+        )
+        VALUES ($1, $2, $3, $4, $5, $6)
+        RETURNING *
+      `;
+
+      await db.$client.query(insertAeoContentSql, [
+        userMessage.id,
+        session.chatbot.userId,
+        session.chatbot.websiteId,
+        message,
+        aiContent,
+        'pending'
+      ]);
+      
+      log(`AI response generated successfully (len: ${aiContent.length})`, 'chatbot');
       
       // Return the AI response to the client
       return res.status(200).json({
@@ -387,17 +475,30 @@ Website: ${session.chatbot.website.domain}
       });
     } catch (aiError) {
       // If AI fails, provide a fallback response
+      log(`AI error in chat: ${aiError}`, 'error');
       const fallbackResponse = "I'm sorry, but I'm having trouble processing your request at the moment. Please try again later or contact support for assistance.";
       
-      const [fallbackMessage] = await db.insert(chatMessages)
-        .values({
-          sessionId,
-          content: fallbackResponse,
-          role: 'assistant'
-        })
-        .returning();
-      
-      log(`AI error in chat: ${aiError}`, 'error');
+      const insertFallbackMessageSql = `
+        INSERT INTO chat_messages (
+          session_id,
+          content,
+          role
+        )
+        VALUES ($1, $2, $3)
+        RETURNING *
+      `;
+
+      const fallbackMessageResult = await db.$client.query(insertFallbackMessageSql, [
+        sessionId,
+        fallbackResponse,
+        'assistant'
+      ]);
+
+      if (!fallbackMessageResult.rows || fallbackMessageResult.rows.length === 0) {
+        throw new Error('Failed to save fallback message');
+      }
+
+      const fallbackMessage = fallbackMessageResult.rows[0];
       
       return res.status(200).json({
         message: fallbackMessage,
@@ -418,20 +519,31 @@ export async function getMessages(req: Request, res: Response) {
   try {
     const sessionId = Number(req.params.sessionId);
     
-    // Check if session exists
-    const session = await db.query.chatSessions.findFirst({
-      where: eq(chatSessions.id, sessionId)
-    });
-
-    if (!session) {
+    log(`Retrieving messages for session ID ${sessionId}`, 'chatbot');
+    
+    // Check if session exists using raw SQL
+    const checkSessionSql = `
+      SELECT * FROM chat_sessions WHERE id = $1
+    `;
+    
+    const sessionResult = await db.$client.query(checkSessionSql, [sessionId]);
+    
+    if (!sessionResult.rows || sessionResult.rows.length === 0) {
+      log(`Session ID ${sessionId} not found`, 'chatbot');
       return res.status(404).json({ message: 'Chat session not found' });
     }
 
-    // Get messages for session
-    const messages = await db.query.chatMessages.findMany({
-      where: eq(chatMessages.sessionId, sessionId),
-      orderBy: (chatMessages, { asc }) => [asc(chatMessages.sentAt)]
-    });
+    // Get messages for session using raw SQL
+    const getMessagesSql = `
+      SELECT * FROM chat_messages 
+      WHERE session_id = $1
+      ORDER BY sent_at ASC
+    `;
+    
+    const messagesResult = await db.$client.query(getMessagesSql, [sessionId]);
+    
+    const messages = messagesResult.rows || [];
+    log(`Retrieved ${messages.length} messages for session ID ${sessionId}`, 'chatbot');
 
     return res.status(200).json(messages);
   } catch (error) {
