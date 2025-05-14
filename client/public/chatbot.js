@@ -24,14 +24,14 @@
   // Create styles
   const styleEl = document.createElement('style');
   styleEl.innerHTML = `
-    .marksync-chatbot-container {
+    .ecomai-chatbot-container {
       position: fixed;
       ${config.position.includes('bottom') ? 'bottom: 20px;' : 'top: 20px;'}
       ${config.position.includes('right') ? 'right: 20px;' : 'left: 20px;'}
       z-index: 10000;
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     }
-    .marksync-chatbot-button {
+    .ecomai-chatbot-button {
       width: 60px;
       height: 60px;
       border-radius: 50%;
@@ -44,14 +44,14 @@
       box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
       transition: transform 0.3s ease;
     }
-    .marksync-chatbot-button:hover {
+    .ecomai-chatbot-button:hover {
       transform: scale(1.05);
     }
-    .marksync-chatbot-icon {
+    .ecomai-chatbot-icon {
       width: 30px;
       height: 30px;
     }
-    .marksync-chatbot-window {
+    .ecomai-chatbot-window {
       position: absolute;
       ${config.position.includes('bottom') ? 'bottom: 70px;' : 'top: 70px;'}
       ${config.position.includes('right') ? 'right: 0;' : 'left: 0;'}
@@ -68,12 +68,12 @@
       transform: translateY(20px) scale(0.95);
       pointer-events: none;
     }
-    .marksync-chatbot-window.open {
+    .ecomai-chatbot-window.open {
       opacity: 1;
       transform: translateY(0) scale(1);
       pointer-events: all;
     }
-    .marksync-chatbot-header {
+    .ecomai-chatbot-header {
       padding: 16px;
       background-color: ${config.primaryColor};
       color: white;
@@ -81,15 +81,15 @@
       align-items: center;
       justify-content: space-between;
     }
-    .marksync-chatbot-title {
+    .ecomai-chatbot-title {
       font-weight: 600;
       font-size: 16px;
     }
-    .marksync-chatbot-close {
+    .ecomai-chatbot-close {
       cursor: pointer;
       padding: 4px;
     }
-    .marksync-chatbot-messages {
+    .ecomai-chatbot-messages {
       flex: 1;
       padding: 16px;
       overflow-y: auto;
@@ -97,25 +97,25 @@
       flex-direction: column;
       gap: 12px;
     }
-    .marksync-message {
+    .ecomai-message {
       max-width: 75%;
       padding: 12px;
       border-radius: 18px;
       position: relative;
       word-break: break-word;
     }
-    .marksync-message.user {
+    .ecomai-message.user {
       align-self: flex-end;
       background-color: ${config.primaryColor};
       color: white;
       border-bottom-right-radius: 4px;
     }
-    .marksync-message.assistant {
+    .ecomai-message.assistant {
       align-self: flex-start;
       background-color: #f0f0f0;
       border-bottom-left-radius: 4px;
     }
-    .marksync-typing {
+    .ecomai-typing {
       display: flex;
       gap: 5px;
       align-items: center;
@@ -125,20 +125,20 @@
       align-self: flex-start;
       max-width: 75%;
     }
-    .marksync-dot {
+    .ecomai-dot {
       width: 8px;
       height: 8px;
       background-color: #999;
       border-radius: 50%;
-      animation: marksync-bounce 1.5s infinite;
+      animation: ecomai-bounce 1.5s infinite;
     }
-    .marksync-dot:nth-child(2) {
+    .ecomai-dot:nth-child(2) {
       animation-delay: 0.1s;
     }
-    .marksync-dot:nth-child(3) {
+    .ecomai-dot:nth-child(3) {
       animation-delay: 0.2s;
     }
-    @keyframes marksync-bounce {
+    @keyframes ecomai-bounce {
       0%, 100% {
         transform: translateY(0);
       }
@@ -146,13 +146,13 @@
         transform: translateY(-6px);
       }
     }
-    .marksync-chatbot-input {
+    .ecomai-chatbot-input {
       padding: 16px;
       border-top: 1px solid #e0e0e0;
       display: flex;
       gap: 8px;
     }
-    .marksync-chatbot-input input {
+    .ecomai-chatbot-input input {
       flex: 1;
       padding: 10px 16px;
       border-radius: 20px;
@@ -160,10 +160,10 @@
       outline: none;
       font-size: 14px;
     }
-    .marksync-chatbot-input input:focus {
+    .ecomai-chatbot-input input:focus {
       border-color: ${config.primaryColor};
     }
-    .marksync-send-button {
+    .ecomai-send-button {
       background-color: ${config.primaryColor};
       color: white;
       border: none;
@@ -175,24 +175,24 @@
       justify-content: center;
       cursor: pointer;
     }
-    .marksync-send-button:disabled {
+    .ecomai-send-button:disabled {
       opacity: 0.6;
       cursor: not-allowed;
     }
-    .marksync-email-form {
+    .ecomai-email-form {
       padding: 20px;
       display: flex;
       flex-direction: column;
       gap: 10px;
     }
-    .marksync-email-form input {
+    .ecomai-email-form input {
       padding: 10px 16px;
       border-radius: 6px;
       border: 1px solid #e0e0e0;
       outline: none;
       font-size: 14px;
     }
-    .marksync-email-form button {
+    .ecomai-email-form button {
       background-color: ${config.primaryColor};
       color: white;
       border: none;
@@ -202,7 +202,7 @@
       font-weight: 600;
       cursor: pointer;
     }
-    .marksync-email-form p {
+    .ecomai-email-form p {
       font-size: 14px;
       color: #666;
     }
@@ -211,44 +211,44 @@
 
   // Create DOM elements
   const container = document.createElement('div');
-  container.className = 'marksync-chatbot-container';
+  container.className = 'ecomai-chatbot-container';
 
   // Chat button
   const button = document.createElement('div');
-  button.className = 'marksync-chatbot-button';
-  button.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="marksync-chatbot-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path></svg>`;
+  button.className = 'ecomai-chatbot-button';
+  button.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="ecomai-chatbot-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path></svg>`;
   
   // Chat window
   const chatWindow = document.createElement('div');
-  chatWindow.className = 'marksync-chatbot-window';
+  chatWindow.className = 'ecomai-chatbot-window';
   
   // Chat header
   const header = document.createElement('div');
-  header.className = 'marksync-chatbot-header';
+  header.className = 'ecomai-chatbot-header';
   header.innerHTML = `
-    <div class="marksync-chatbot-title">${config.title}</div>
-    <div class="marksync-chatbot-close">
+    <div class="ecomai-chatbot-title">${config.title}</div>
+    <div class="ecomai-chatbot-close">
       <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
     </div>
   `;
   
   // Messages container
   const messagesContainer = document.createElement('div');
-  messagesContainer.className = 'marksync-chatbot-messages';
+  messagesContainer.className = 'ecomai-chatbot-messages';
   
   // Input area
   const inputArea = document.createElement('div');
-  inputArea.className = 'marksync-chatbot-input';
+  inputArea.className = 'ecomai-chatbot-input';
   inputArea.innerHTML = `
     <input type="text" placeholder="Type your message..." />
-    <button class="marksync-send-button" disabled>
+    <button class="ecomai-send-button" disabled>
       <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
     </button>
   `;
   
   // Email collection form (shown before chat if collectEmail is true)
   const emailForm = document.createElement('div');
-  emailForm.className = 'marksync-email-form';
+  emailForm.className = 'ecomai-email-form';
   emailForm.style.display = config.collectEmail ? 'flex' : 'none';
   emailForm.innerHTML = `
     <p>Please provide your email to start chatting:</p>
@@ -374,13 +374,13 @@
     }
     
     // Update title
-    const title = document.querySelector('.marksync-chatbot-title');
+    const title = document.querySelector('.ecomai-chatbot-title');
     if (title) title.textContent = config.title;
     
     // Update email collection visibility
-    const emailForm = document.querySelector('.marksync-email-form');
-    const messagesContainer = document.querySelector('.marksync-chatbot-messages');
-    const inputArea = document.querySelector('.marksync-chatbot-input');
+    const emailForm = document.querySelector('.ecomai-email-form');
+    const messagesContainer = document.querySelector('.ecomai-chatbot-messages');
+    const inputArea = document.querySelector('.ecomai-chatbot-input');
     
     if (emailForm && messagesContainer && inputArea) {
       if (config.collectEmail) {
@@ -515,7 +515,7 @@
   // Add a message to the chat
   function addMessage(text, role) {
     const message = document.createElement('div');
-    message.className = `marksync-message ${role}`;
+    message.className = `ecomai-message ${role}`;
     message.textContent = text;
     messagesContainer.appendChild(message);
     messagesContainer.scrollTop = messagesContainer.scrollHeight;
@@ -527,13 +527,13 @@
     
     isTyping = true;
     const typing = document.createElement('div');
-    typing.className = 'marksync-typing';
+    typing.className = 'ecomai-typing';
     typing.innerHTML = `
-      <div class="marksync-dot"></div>
-      <div class="marksync-dot"></div>
-      <div class="marksync-dot"></div>
+      <div class="ecomai-dot"></div>
+      <div class="ecomai-dot"></div>
+      <div class="ecomai-dot"></div>
     `;
-    typing.id = 'marksync-typing-indicator';
+    typing.id = 'ecomai-typing-indicator';
     messagesContainer.appendChild(typing);
     messagesContainer.scrollTop = messagesContainer.scrollHeight;
   }
@@ -541,7 +541,7 @@
   // Hide typing indicator
   function hideTyping() {
     isTyping = false;
-    const typingIndicator = document.getElementById('marksync-typing-indicator');
+    const typingIndicator = document.getElementById('ecomai-typing-indicator');
     if (typingIndicator) {
       typingIndicator.remove();
     }
@@ -558,7 +558,7 @@
     chatWindow.classList.toggle('open', isOpen);
   });
   
-  const closeButton = header.querySelector('.marksync-chatbot-close');
+  const closeButton = header.querySelector('.ecomai-chatbot-close');
   closeButton.addEventListener('click', (e) => {
     e.stopPropagation();
     isOpen = false;
