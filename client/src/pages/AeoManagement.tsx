@@ -177,6 +177,10 @@ export default function AeoManagement() {
   const handleEdit = (id: string, newAnswer: string) => {
     updateMutation.mutate({ id, answer: newAnswer });
   };
+  
+  const handlePublish = (id: string) => {
+    publishMutation.mutate(id);
+  };
 
   return (
     <DashboardLayout>
@@ -310,6 +314,7 @@ export default function AeoManagement() {
                     status={item.status}
                     timestamp={item.timestamp}
                     onEdit={(newAnswer) => handleEdit(item.id, newAnswer)}
+                    onPublish={() => handlePublish(item.id)}
                   />
                 ))
               )}

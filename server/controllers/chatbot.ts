@@ -2,7 +2,7 @@ import { Request, Response } from 'express';
 import { db } from '../db';
 import { chatbots, chatSessions, chatMessages, aeoContent, websites, companyProfiles } from '@shared/schema';
 import { eq, and, desc, asc } from 'drizzle-orm';
-import { generateAIResponse } from '../services/perplexityService';
+import { generateAIResponse } from '../services/openaiService';
 import { log } from '../vite';
 
 /**
