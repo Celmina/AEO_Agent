@@ -344,28 +344,28 @@
   // Updates the chatbot UI with current configuration
   function updateChatbotStyles() {
     // Update button color
-    const button = document.querySelector('.marksync-chatbot-button');
+    const button = document.querySelector('.ecomai-chatbot-button');
     if (button) button.style.backgroundColor = config.primaryColor;
     
     // Update header color
-    const header = document.querySelector('.marksync-chatbot-header');
+    const header = document.querySelector('.ecomai-chatbot-header');
     if (header) header.style.backgroundColor = config.primaryColor;
     
     // Update send button color
-    const sendButton = document.querySelector('.marksync-send-button');
+    const sendButton = document.querySelector('.ecomai-send-button');
     if (sendButton) sendButton.style.backgroundColor = config.primaryColor;
     
     // Update user message bubble color
     const style = document.createElement('style');
     style.textContent = `
-      .marksync-message.user { background-color: ${config.primaryColor}; }
-      .marksync-chatbot-input input:focus { border-color: ${config.primaryColor}; }
-      .marksync-email-form button { background-color: ${config.primaryColor}; }
+      .ecomai-message.user { background-color: ${config.primaryColor}; }
+      .ecomai-chatbot-input input:focus { border-color: ${config.primaryColor}; }
+      .ecomai-email-form button { background-color: ${config.primaryColor}; }
     `;
     document.head.appendChild(style);
     
     // Update position
-    const container = document.querySelector('.marksync-chatbot-container');
+    const container = document.querySelector('.ecomai-chatbot-container');
     if (container) {
       container.style.top = config.position.includes('top') ? '20px' : 'auto';
       container.style.bottom = config.position.includes('bottom') ? '20px' : 'auto';
