@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AeoContentItem } from "@/components/aeo/AeoContentItem";
@@ -6,75 +6,151 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Separator } from "@/components/ui/separator";
-import { AlertCircle } from "lucide-react";
+import { AlertCircle, Loader2 } from "lucide-react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
+import type { AeoContent } from "@shared/schema";
 
-// Mock data for demonstration
-const pendingItems = [
-  {
-    id: 'p1',
-    question: "What services do you offer for e-commerce businesses?",
-    answer: "We offer comprehensive e-commerce solutions including website development, payment integration, inventory management systems, and marketing strategies tailored specifically for online retail businesses.",
-    status: 'pending' as const,
-    timestamp: new Date(Date.now() - 1000 * 60 * 60 * 2), // 2 hours ago
-  },
-  {
-    id: 'p2',
-    question: "How do I integrate your chatbot with my Shopify store?",
-    answer: "Integrating our chatbot with your Shopify store is simple. You'll need to add our custom script to your theme.liquid file, or use our Shopify app for a no-code installation. The process takes less than 5 minutes and our support team is available to help.",
-    status: 'pending' as const,
-    timestamp: new Date(Date.now() - 1000 * 60 * 60 * 5), // 5 hours ago
-  },
-];
-
-const approvedItems = [
-  {
-    id: 'a1',
-    question: "What is the pricing for your premium plan?",
-    answer: "Our premium plan is priced at $49/month and includes unlimited chatbot interactions, advanced analytics, priority support, and integration with up to 5 websites. We also offer a 14-day free trial with no credit card required.",
-    status: 'approved' as const,
-    timestamp: new Date(Date.now() - 1000 * 60 * 60 * 24 * 2), // 2 days ago
-  },
-];
-
-const publishedItems = [
-  {
-    id: 'pub1',
-    question: "Do you provide custom chatbot training?",
-    answer: "Yes, we provide custom chatbot training services. Our team can help you train your chatbot with industry-specific knowledge and your company's unique voice. This service is included in our Enterprise plan or available as an add-on for other plans.",
-    status: 'published' as const,
-    timestamp: new Date(Date.now() - 1000 * 60 * 60 * 24 * 7), // 1 week ago
-  },
-  {
-    id: 'pub2',
-    question: "How does the chatbot help with SEO?",
-    answer: "Our chatbot helps with SEO through Answer Engine Optimization (AEO). It captures real questions from your visitors and generates SEO-optimized content with proper schema markup. This helps your website rank for specific questions in search engines and appear in featured snippets.",
-    status: 'published' as const,
-    timestamp: new Date(Date.now() - 1000 * 60 * 60 * 24 * 14), // 2 weeks ago
-  },
-];
+// Interface for transformed AEO content items for display
+interface AeoItem {
+  id: string;
+  question: string;
+  answer: string;
+  status: 'pending' | 'approved' | 'rejected' | 'published';
+  timestamp: Date;
+}
 
 export default function AeoManagement() {
-  const [pending, setPending] = useState(pendingItems);
-  const [approved, setApproved] = useState(approvedItems);
-  const [published, setPublished] = useState(publishedItems);
+  const [pending, setPending] = useState<AeoItem[]>([]);
+  const [approved, setApproved] = useState<AeoItem[]>([]);
+  const [published, setPublished] = useState<AeoItem[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  
+  // Fetch AEO content
+  const aeoContentQuery = useQuery({
+    queryKey: ["/api/aeo-content"],
+  });
+  
+  // Process AEO content data
+  useEffect(() => {
+    if (aeoContentQuery.data) {
+      const aeoItems = aeoContentQuery.data as AeoContent[];
+      
+      // Transform and filter data for each category
+      const pendingItems = aeoItems
+        .filter(item => item.status === 'pending')
+        .map(item => ({
+          id: item.id.toString(),
+          question: item.question,
+          answer: item.answer,
+          status: item.status as 'pending' | 'approved' | 'rejected' | 'published',
+          timestamp: new Date(String(item.updatedAt || item.createdAt || Date.now()))
+        }));
+      
+      const approvedItems = aeoItems
+        .filter(item => item.status === 'approved')
+        .map(item => ({
+          id: item.id.toString(),
+          question: item.question,
+          answer: item.answer,
+          status: item.status as 'pending' | 'approved' | 'rejected' | 'published',
+          timestamp: new Date(String(item.updatedAt || item.createdAt || Date.now()))
+        }));
+      
+      const publishedItems = aeoItems
+        .filter(item => item.status === 'published')
+        .map(item => ({
+          id: item.id.toString(),
+          question: item.question,
+          answer: item.answer,
+          status: item.status as 'pending' | 'approved' | 'rejected' | 'published',
+          timestamp: new Date(String(item.updatedAt || item.createdAt || Date.now()))
+        }));
+      
+      setPending(pendingItems);
+      setApproved(approvedItems);
+      setPublished(publishedItems);
+      setIsLoading(false);
+    }
+  }, [aeoContentQuery.data]);
+  
+  // Mutations for approving, rejecting, and editing content
+  const approveMutation = useMutation({
+    mutationFn: async (id: string) => {
+      return await apiRequest("POST", `/api/aeo-content/${id}/approve`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/aeo-content"] });
+      toast({
+        title: "Content approved",
+        description: "The content has been moved to the approved list.",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: "Failed to approve the content. Please try again.",
+        variant: "destructive",
+      });
+      console.error("Failed to approve content:", error);
+    }
+  });
+  
+  const rejectMutation = useMutation({
+    mutationFn: async (id: string) => {
+      return await apiRequest("POST", `/api/aeo-content/${id}/reject`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/aeo-content"] });
+      toast({
+        title: "Content rejected",
+        description: "The content has been rejected and will not be published.",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: "Failed to reject the content. Please try again.",
+        variant: "destructive",
+      });
+      console.error("Failed to reject content:", error);
+    }
+  });
+  
+  const updateMutation = useMutation({
+    mutationFn: async ({ id, answer }: { id: string, answer: string }) => {
+      return await apiRequest("PUT", `/api/aeo-content/${id}`, { answer });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/aeo-content"] });
+      toast({
+        title: "Content updated",
+        description: "The content has been successfully updated.",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: "Failed to update the content. Please try again.",
+        variant: "destructive",
+      });
+      console.error("Failed to update content:", error);
+    }
+  });
   
   const handleApprove = (id: string) => {
-    const item = pending.find(item => item.id === id);
-    if (item) {
-      const newItem = { ...item, status: 'approved' as const };
-      setApproved([newItem, ...approved]);
-      setPending(pending.filter(item => item.id !== id));
-    }
+    approveMutation.mutate(id);
   };
   
   const handleReject = (id: string) => {
-    setPending(pending.filter(item => item.id !== id));
+    rejectMutation.mutate(id);
   };
   
   const handleEdit = (id: string, newAnswer: string) => {
-    // Logic to update the answer for the specified item
-    // This would typically involve an API call in a real application
-    console.log(`Edited item ${id} with new answer: ${newAnswer}`);
+    updateMutation.mutate({ id, answer: newAnswer });
   };
 
   return (
@@ -143,77 +219,102 @@ export default function AeoManagement() {
           </CardContent>
         </Card>
         
-        <Tabs defaultValue="pending" className="w-full">
-          <TabsList className="grid w-full grid-cols-3 mb-4">
-            <TabsTrigger value="pending">
-              Pending Review ({pending.length})
-            </TabsTrigger>
-            <TabsTrigger value="approved">
-              Approved ({approved.length})
-            </TabsTrigger>
-            <TabsTrigger value="published">
-              Published ({published.length})
-            </TabsTrigger>
-          </TabsList>
-          
-          <TabsContent value="pending" className="space-y-4">
-            {pending.length === 0 ? (
-              <div className="text-center py-8">
-                <p className="text-muted-foreground">No pending content to review</p>
-              </div>
-            ) : (
-              pending.map(item => (
-                <AeoContentItem
-                  key={item.id}
-                  question={item.question}
-                  answer={item.answer}
-                  status={item.status}
-                  timestamp={item.timestamp}
-                  onApprove={() => handleApprove(item.id)}
-                  onReject={() => handleReject(item.id)}
-                  onEdit={(newAnswer) => handleEdit(item.id, newAnswer)}
-                />
-              ))
-            )}
-          </TabsContent>
-          
-          <TabsContent value="approved" className="space-y-4">
-            {approved.length === 0 ? (
-              <div className="text-center py-8">
-                <p className="text-muted-foreground">No approved content yet</p>
-              </div>
-            ) : (
-              approved.map(item => (
-                <AeoContentItem
-                  key={item.id}
-                  question={item.question}
-                  answer={item.answer}
-                  status={item.status}
-                  timestamp={item.timestamp}
-                  onEdit={(newAnswer) => handleEdit(item.id, newAnswer)}
-                />
-              ))
-            )}
-          </TabsContent>
-          
-          <TabsContent value="published" className="space-y-4">
-            {published.length === 0 ? (
-              <div className="text-center py-8">
-                <p className="text-muted-foreground">No published content yet</p>
-              </div>
-            ) : (
-              published.map(item => (
-                <AeoContentItem
-                  key={item.id}
-                  question={item.question}
-                  answer={item.answer}
-                  status={item.status}
-                  timestamp={item.timestamp}
-                />
-              ))
-            )}
-          </TabsContent>
-        </Tabs>
+        {isLoading || aeoContentQuery.isLoading ? (
+          <div className="flex justify-center items-center py-20">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            <span className="ml-3 text-lg">Loading AEO content...</span>
+          </div>
+        ) : (
+          <Tabs defaultValue="pending" className="w-full">
+            <TabsList className="grid w-full grid-cols-3 mb-4">
+              <TabsTrigger value="pending">
+                Pending Review ({pending.length})
+              </TabsTrigger>
+              <TabsTrigger value="approved">
+                Approved ({approved.length})
+              </TabsTrigger>
+              <TabsTrigger value="published">
+                Published ({published.length})
+              </TabsTrigger>
+            </TabsList>
+            
+            <TabsContent value="pending" className="space-y-4">
+              {pending.length === 0 ? (
+                <div className="text-center py-12">
+                  <div className="mx-auto rounded-full bg-muted w-12 h-12 flex items-center justify-center mb-3">
+                    <i className="fas fa-inbox text-xl text-muted-foreground"></i>
+                  </div>
+                  <h3 className="text-lg font-medium mb-1">No pending content</h3>
+                  <p className="text-muted-foreground">
+                    When your chatbot collects questions, they'll appear here for review.
+                  </p>
+                </div>
+              ) : (
+                pending.map(item => (
+                  <AeoContentItem
+                    key={item.id}
+                    question={item.question}
+                    answer={item.answer}
+                    status={item.status}
+                    timestamp={item.timestamp}
+                    onApprove={() => handleApprove(item.id)}
+                    onReject={() => handleReject(item.id)}
+                    onEdit={(newAnswer) => handleEdit(item.id, newAnswer)}
+                  />
+                ))
+              )}
+            </TabsContent>
+            
+            <TabsContent value="approved" className="space-y-4">
+              {approved.length === 0 ? (
+                <div className="text-center py-12">
+                  <div className="mx-auto rounded-full bg-muted w-12 h-12 flex items-center justify-center mb-3">
+                    <i className="fas fa-check text-xl text-muted-foreground"></i>
+                  </div>
+                  <h3 className="text-lg font-medium mb-1">No approved content yet</h3>
+                  <p className="text-muted-foreground">
+                    Content you approve will be ready for publishing to your website.
+                  </p>
+                </div>
+              ) : (
+                approved.map(item => (
+                  <AeoContentItem
+                    key={item.id}
+                    question={item.question}
+                    answer={item.answer}
+                    status={item.status}
+                    timestamp={item.timestamp}
+                    onEdit={(newAnswer) => handleEdit(item.id, newAnswer)}
+                  />
+                ))
+              )}
+            </TabsContent>
+            
+            <TabsContent value="published" className="space-y-4">
+              {published.length === 0 ? (
+                <div className="text-center py-12">
+                  <div className="mx-auto rounded-full bg-muted w-12 h-12 flex items-center justify-center mb-3">
+                    <i className="fas fa-globe text-xl text-muted-foreground"></i>
+                  </div>
+                  <h3 className="text-lg font-medium mb-1">No published content yet</h3>
+                  <p className="text-muted-foreground">
+                    Once content is approved, it can be published to your website.
+                  </p>
+                </div>
+              ) : (
+                published.map(item => (
+                  <AeoContentItem
+                    key={item.id}
+                    question={item.question}
+                    answer={item.answer}
+                    status={item.status}
+                    timestamp={item.timestamp}
+                  />
+                ))
+              )}
+            </TabsContent>
+          </Tabs>
+        )}
       </div>
     </DashboardLayout>
   );
