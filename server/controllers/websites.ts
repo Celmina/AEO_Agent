@@ -1,8 +1,9 @@
 import { Request, Response } from "express";
 import { storage } from "../storage";
-import { insertWebsiteSchema } from "@shared/schema";
+import { insertWebsiteSchema, chatbots } from "@shared/schema";
 import { randomBytes } from "crypto";
 import { z, ZodError } from "zod";
+import { db } from "../db";
 
 /**
  * Get all websites for the authenticated user
@@ -46,6 +47,9 @@ export async function getWebsite(req: Request, res: Response) {
   }
 }
 
+import { db } from "../db";
+import { chatbots } from "@shared/schema";
+
 /**
  * Create a new website
  */
@@ -68,6 +72,30 @@ export async function createWebsite(req: Request, res: Response) {
     
     // Create the website
     const website = await storage.createWebsite(websiteData);
+    
+    // Auto-create a default chatbot for this website
+    try {
+      const initialMessage = "Hello! How can I help you with information about our website?";
+      
+      await db.insert(chatbots).values({
+        name: `${websiteData.name} Chatbot`,
+        userId: userId,
+        websiteId: website.id,
+        initialMessage: initialMessage,
+        primaryColor: "#4f46e5",  // Default primary color
+        position: "bottom-right", // Default position
+        collectEmail: true,       // Default to collecting emails
+        status: "active",         // Set as active by default
+        createdAt: new Date(),
+        updatedAt: new Date()
+      });
+      
+      console.log(`Automatically created chatbot for website ${website.id}`);
+    } catch (chatbotError) {
+      console.error("Error creating default chatbot:", chatbotError);
+      // We don't fail the request if chatbot creation fails
+      // The user can still create a chatbot manually
+    }
     
     return res.status(201).json(website);
   } catch (error) {

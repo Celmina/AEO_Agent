@@ -1,39 +1,21 @@
 import { log } from "../vite";
+import OpenAI from "openai";
 
-interface PerplexityMessage {
+// the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
+const MODEL = "gpt-4o";
+
+interface OpenAIMessage {
   role: "system" | "user" | "assistant";
   content: string;
 }
 
-interface PerplexityRequestOptions {
-  model?: string;
-  messages: PerplexityMessage[];
-  temperature?: number;
-  max_tokens?: number;
-}
-
-interface PerplexityResponse {
-  id: string;
-  model: string;
-  object: string;
-  created: number;
-  choices: {
-    index: number;
-    finish_reason: string;
-    message: PerplexityMessage;
-    delta?: { role: string; content: string };
-  }[];
-  usage: {
-    prompt_tokens: number;
-    completion_tokens: number;
-    total_tokens: number;
-  };
-  citations?: any[];
-}
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
+});
 
 export async function generateAIResponse(question: string, context: string): Promise<string> {
-  if (!process.env.PERPLEXITY_API_KEY) {
-    throw new Error("Missing PERPLEXITY_API_KEY");
+  if (!process.env.OPENAI_API_KEY) {
+    throw new Error("Missing OPENAI_API_KEY");
   }
 
   const systemPrompt = `You are an AI assistant specifically designed to help website visitors with questions about the following company:
@@ -45,39 +27,27 @@ If you don't know the answer, say so and offer to connect the user with a human 
 Do not make up information that is not provided in the context.`;
 
   try {
-    const requestOptions: PerplexityRequestOptions = {
-      model: "llama-3.1-sonar-small-128k-online",
+    log(`Generating AI response for question: "${question}"`, "openai");
+    
+    const response = await openai.chat.completions.create({
+      model: MODEL,
       messages: [
         { role: "system", content: systemPrompt },
         { role: "user", content: question }
       ],
       temperature: 0.2, // Lower temperature for more focused, deterministic responses
-    };
-
-    const response = await fetch("https://api.perplexity.ai/chat/completions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${process.env.PERPLEXITY_API_KEY}`
-      },
-      body: JSON.stringify(requestOptions)
+      max_tokens: 500
     });
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      log(`Perplexity API error: ${response.status} ${errorText}`, "perplexity");
-      throw new Error(`Perplexity API error: ${response.status}`);
-    }
-
-    const data: PerplexityResponse = await response.json();
-    
-    if (data.choices && data.choices.length > 0 && data.choices[0].message) {
-      return data.choices[0].message.content;
+    if (response.choices && response.choices.length > 0 && response.choices[0].message) {
+      const responseText = response.choices[0].message.content || "";
+      log(`AI generated response (first 100 chars): "${responseText.substring(0, 100)}..."`, "openai");
+      return responseText;
     } else {
-      throw new Error("Unexpected response format from Perplexity API");
+      throw new Error("Unexpected response format from OpenAI API");
     }
   } catch (error) {
-    log(`Error generating AI response: ${error}`, "perplexity");
+    log(`Error generating AI response: ${error}`, "openai");
     throw error;
   }
 }
