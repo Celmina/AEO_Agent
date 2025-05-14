@@ -45,10 +45,7 @@ export default function ConnectWebsite() {
         description: "Your website has been connected successfully.",
       });
       
-      // In a real app, we might wait a moment before redirecting
-      setTimeout(() => {
-        setLocation("/company-setup");
-      }, 1500);
+      // Don't automatically redirect - let the user click to continue
     } catch (error) {
       toast({
         title: "Error",

@@ -12,6 +12,7 @@ import Signup from "@/pages/Signup";
 import Dashboard from "@/pages/Dashboard";
 import ConnectWebsite from "@/pages/ConnectWebsite";
 import CompanySetup from "@/pages/CompanySetup";
+import AeoManagement from "@/pages/AeoManagement";
 import NotFound from "@/pages/not-found";
 
 function Router() {
