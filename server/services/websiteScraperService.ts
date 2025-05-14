@@ -1,7 +1,7 @@
 import axios from 'axios';
 import { load } from 'cheerio';
 import { log } from '../vite';
-import { db } from '../db';
+import { db, pool } from '../db';
 import { websites, companyProfiles } from '@shared/schema';
 import { eq } from 'drizzle-orm';
 
@@ -44,63 +44,136 @@ export async function scrapeWebsite(url: string, websiteId: number): Promise<boo
     // Get website content
     const content = await scrapeContent(normalizedUrl);
     
-    // Save raw content to website record
-    await db.update(websites)
-      .set({ 
-        scrapedContent: JSON.stringify(content) as any,
-        lastScraped: new Date(),
-        scrapingStatus: 'completed'
-      })
-      .where(eq(websites.id, websiteId));
+    // Save raw content to website record - use direct SQL query to avoid ORM issues
+    try {
+      await pool.query(`
+        UPDATE websites 
+        SET scraped_content = $1, 
+            last_scraped = $2, 
+            scraping_status = $3,
+            status = $4
+        WHERE id = $5
+      `, [
+        JSON.stringify(content), 
+        new Date(), 
+        'completed',
+        'active',
+        websiteId
+      ]);
+      
+      log(`Updated website ${websiteId} with scraped content (${Object.keys(content).length} fields)`, 'scraper');
+    } catch (updateError) {
+      log(`Error updating website with scraped content: ${updateError}`, 'error');
+      return false;
+    }
     
     // Generate website profile from content
     const profile = generateProfileFromContent(content);
     
-    // Find existing company profile
-    const websiteRecord = await db.query.websites.findFirst({
-      where: eq(websites.id, websiteId),
-      with: {
-        user: true
+    // Find website and associated user with direct SQL
+    let websiteUserId: number | null = null;
+    try {
+      const websiteResult = await pool.query(`
+        SELECT user_id FROM websites WHERE id = $1
+      `, [websiteId]);
+      
+      if (!websiteResult || !websiteResult.rows || websiteResult.rows.length === 0) {
+        log(`Website with ID ${websiteId} not found`, 'error');
+        return false;
       }
-    });
-    
-    if (!websiteRecord || !websiteRecord.user) {
-      log(`Website with ID ${websiteId} not found or no user associated`, 'error');
+      
+      websiteUserId = parseInt(websiteResult.rows[0].user_id);
+      
+      if (!websiteUserId) {
+        log(`No user associated with website ID ${websiteId}`, 'error');
+        return false;
+      }
+      
+      log(`Found user ID ${websiteUserId} for website ${websiteId}`, 'scraper');
+    } catch (websiteError) {
+      log(`Error finding website or user: ${websiteError}`, 'error');
       return false;
     }
     
     // Check if company profile already exists
-    const existingProfile = await db.query.companyProfiles.findFirst({
-      where: eq(companyProfiles.userId, websiteRecord.userId)
-    });
+    let existingProfile = null;
+    let websiteName = 'Website';
+    let websiteDomain = 'website.com';
     
-    if (existingProfile) {
-      // Update existing profile
-      await db.update(companyProfiles)
-        .set({
-          companyName: profile.companyName || existingProfile.companyName,
-          industry: profile.industry || existingProfile.industry,
-          targetAudience: profile.targetAudience || existingProfile.targetAudience,
-          brandVoice: profile.brandVoice || existingProfile.brandVoice,
-          services: profile.services || existingProfile.services,
-          valueProposition: profile.valueProposition || existingProfile.valueProposition,
-          updatedAt: new Date()
-        })
-        .where(eq(companyProfiles.userId, websiteRecord.userId));
-    } else {
-      // Create new profile with default values for nullable fields
-      await db.insert(companyProfiles)
-        .values({
-          userId: websiteRecord.userId,
-          companyName: profile.companyName || websiteRecord.name || 'Website',
-          industry: profile.industry || 'Not specified',
-          targetAudience: profile.targetAudience || 'General audience',
-          brandVoice: profile.brandVoice || 'Professional',
-          services: profile.services || 'Services not specified',
-          valueProposition: profile.valueProposition || 'Value proposition not specified',
-          createdAt: new Date(),
-          updatedAt: new Date()
-        } as any);
+    try {
+      // Get website name and domain for fallbacks
+      const domainResult = await pool.query(`
+        SELECT name, domain FROM websites WHERE id = $1
+      `, [websiteId]);
+      
+      websiteName = domainResult.rows[0]?.name || 'Website';
+      websiteDomain = domainResult.rows[0]?.domain || 'website.com';
+      
+      // Check for existing profile
+      const profileResult = await pool.query(`
+        SELECT * FROM company_profiles WHERE user_id = $1
+      `, [websiteUserId]);
+      
+      if (profileResult && profileResult.rows && profileResult.rows.length > 0) {
+        existingProfile = profileResult.rows[0];
+        log(`Found existing company profile for user ${websiteUserId}`, 'scraper');
+      }
+    } catch (profileError) {
+      log(`Error checking for existing profile: ${profileError}`, 'error');
+      // Continue anyway - we'll create a new profile if needed
+    }
+    
+    // Update or create company profile
+    try {
+      if (existingProfile) {
+        // Update existing profile using direct SQL
+        await pool.query(`
+          UPDATE company_profiles 
+          SET 
+            company_name = $1, 
+            industry = $2, 
+            target_audience = $3, 
+            brand_voice = $4, 
+            services = $5, 
+            value_proposition = $6, 
+            updated_at = $7
+          WHERE user_id = $8
+        `, [
+          profile.companyName || existingProfile.company_name,
+          profile.industry || existingProfile.industry,
+          profile.targetAudience || existingProfile.target_audience,
+          profile.brandVoice || existingProfile.brand_voice,
+          profile.services || existingProfile.services,
+          profile.valueProposition || existingProfile.value_proposition,
+          new Date(),
+          websiteUserId
+        ]);
+        
+        log(`Updated company profile for user ${websiteUserId}`, 'scraper');
+      } else {
+        // Create new profile with direct SQL
+        await pool.query(`
+          INSERT INTO company_profiles (
+            user_id, company_name, industry, target_audience, brand_voice, 
+            services, value_proposition, created_at, updated_at
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+        `, [
+          websiteUserId,
+          profile.companyName || websiteName,
+          profile.industry || 'Not specified',
+          profile.targetAudience || 'General audience',
+          profile.brandVoice || 'Professional',
+          profile.services || 'Services not specified',
+          profile.valueProposition || `Information for ${websiteDomain}`,
+          new Date(),
+          new Date()
+        ]);
+        
+        log(`Created new company profile for user ${websiteUserId}`, 'scraper');
+      }
+    } catch (profileError) {
+      log(`Error updating company profile: ${profileError}`, 'error');
+      // Continue anyway - website data was already saved
     }
     
     log(`Successfully scraped and processed website ${url}`, 'scraper');
