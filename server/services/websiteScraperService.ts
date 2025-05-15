@@ -413,20 +413,15 @@ function extractIndustry(content: ScrapedContent): string {
   const lowercasedText = combinedText.toLowerCase();
   
   // Map to match form dropdown values in CompanySetup.tsx
+  // Values must be: ecommerce, saas, healthcare, finance, education, retail, manufacturing, other
   const industryMapping = [
-    { keywords: ['ecommerce', 'e-commerce', 'online store', 'shop', 'shopping', 'webshop'], value: 'ecommerce' },
-    { keywords: ['software', 'saas', 'cloud', 'subscription', 'platform', 'application'], value: 'saas' },
-    { keywords: ['healthcare', 'medical', 'hospital', 'doctor', 'clinic', 'patient', 'health'], value: 'healthcare' },
-    { keywords: ['finance', 'banking', 'loan', 'credit', 'investment', 'financial'], value: 'finance' },
-    { keywords: ['education', 'school', 'university', 'college', 'course', 'teaching', 'learning'], value: 'education' },
-    { keywords: ['retail', 'store', 'shop', 'mall', 'outlet'], value: 'retail' },
-    { keywords: ['manufacturing', 'factory', 'production', 'industry'], value: 'manufacturing' },
-    { keywords: ['real estate', 'property', 'house', 'apartment', 'building', 'construction'], value: 'real_estate' },
-    { keywords: ['travel', 'tourism', 'hotel', 'vacation', 'booking'], value: 'travel' },
-    { keywords: ['food', 'restaurant', 'catering', 'meal', 'dine'], value: 'food' },
-    { keywords: ['technology', 'tech', 'IT', 'computer', 'digital'], value: 'technology' },
-    { keywords: ['media', 'news', 'entertainment', 'publishing'], value: 'media' },
-    { keywords: ['professional', 'services', 'consulting', 'agency', 'consultant'], value: 'professional_services' }
+    { keywords: ['ecommerce', 'e-commerce', 'online store', 'shop', 'shopping', 'webshop', 'online shop'], value: 'ecommerce' },
+    { keywords: ['software', 'saas', 'cloud', 'subscription', 'platform', 'application', 'service as a software'], value: 'saas' },
+    { keywords: ['healthcare', 'medical', 'hospital', 'doctor', 'clinic', 'patient', 'health', 'wellness'], value: 'healthcare' },
+    { keywords: ['finance', 'banking', 'loan', 'credit', 'investment', 'financial', 'bank', 'money', 'fintech'], value: 'finance' },
+    { keywords: ['education', 'school', 'university', 'college', 'course', 'teaching', 'learning', 'student', 'academic'], value: 'education' },
+    { keywords: ['retail', 'store', 'shop', 'mall', 'outlet', 'seller', 'product', 'purchase'], value: 'retail' },
+    { keywords: ['manufacturing', 'factory', 'production', 'industry', 'industrial', 'producer', 'make', 'build'], value: 'manufacturing' }
   ];
   
   for (const industry of industryMapping) {
@@ -437,6 +432,7 @@ function extractIndustry(content: ScrapedContent): string {
     }
   }
   
+  // Default to other if no match found (must match dropdown options)
   return 'other';
 }
 
@@ -472,6 +468,7 @@ function extractBrandVoice(content: ScrapedContent): string {
   const combinedText = content.mainContent.toLowerCase();
   
   // Map to match form dropdown values in CompanySetup.tsx
+  // Values must be: professional, friendly, authoritative, casual, playful, innovative
   const voiceMapping = [
     { 
       keywords: ['innovative', 'cutting-edge', 'breakthrough', 'revolutionary', 'future', 'advanced', 'tech', 'new', 'modern'],
@@ -482,28 +479,20 @@ function extractBrandVoice(content: ScrapedContent): string {
       value: 'friendly'
     },
     { 
-      keywords: ['expert', 'professional', 'experienced', 'specialist', 'leader', 'knowledge', 'skill', 'proficient', 'qualified', 'authority', 'trusted', 'leading'],
-      value: 'expert'
+      keywords: ['expert', 'authority', 'authoritative', 'experienced', 'specialist', 'leader', 'knowledge', 'skill', 'proficient', 'qualified'],
+      value: 'authoritative'
     },
     { 
-      keywords: ['luxury', 'premium', 'exclusive', 'sophisticated', 'high-end', 'elite', 'upscale', 'elegant', 'refined'],
-      value: 'luxury'
+      keywords: ['professional', 'business', 'formal', 'corporate', 'official', 'standard', 'conventional', 'traditional'],
+      value: 'professional'
     },
     { 
-      keywords: ['fun', 'playful', 'exciting', 'creative', 'entertaining', 'enjoyable', 'amusing', 'light-hearted', 'casual'],
-      value: 'fun'
+      keywords: ['fun', 'playful', 'exciting', 'creative', 'entertaining', 'enjoyable', 'amusing', 'light-hearted'],
+      value: 'playful'
     },
     { 
-      keywords: ['simple', 'straightforward', 'clear', 'easy', 'minimal', 'direct', 'plain', 'uncomplicated', 'no-frills'],
-      value: 'minimalist'
-    },
-    { 
-      keywords: ['trustworthy', 'reliable', 'secure', 'dependable', 'stable', 'honest', 'integrity', 'consistent', 'proven'],
-      value: 'trustworthy'
-    },
-    { 
-      keywords: ['bold', 'strong', 'confident', 'powerful', 'assertive', 'brave', 'daring', 'decisive', 'firm'],
-      value: 'bold'
+      keywords: ['casual', 'conversational', 'relaxed', 'informal', 'everyday', 'simple', 'straightforward', 'approachable'],
+      value: 'casual'
     }
   ];
   
@@ -515,7 +504,7 @@ function extractBrandVoice(content: ScrapedContent): string {
     }
   }
   
-  // Default to professional
+  // Default to professional (must match dropdown options)
   return 'professional';
 }
 

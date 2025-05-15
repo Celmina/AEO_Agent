@@ -116,9 +116,34 @@ export default function CompanySetup() {
                 }
               }
               
-              // Set other values if they exist
+              // Set target audience directly
               if (parsedContent.targetAudience) form.setValue("targetAudience", String(parsedContent.targetAudience));
-              if (parsedContent.brandVoice) form.setValue("brandVoice", String(parsedContent.brandVoice));
+              
+              // Map brand voice from scraped data
+              if (parsedContent.brandVoice) {
+                const voiceMap: Record<string, string> = {
+                  "professional": "professional",
+                  "friendly": "friendly",
+                  "expert": "authoritative",
+                  "authoritative": "authoritative",
+                  "casual": "casual",
+                  "fun": "playful",
+                  "playful": "playful",
+                  "innovative": "innovative",
+                  "minimalist": "professional",
+                  "trustworthy": "professional",
+                  "bold": "authoritative"
+                };
+                
+                const brandVoice = String(parsedContent.brandVoice).toLowerCase();
+                if (voiceMap[brandVoice]) {
+                  form.setValue("brandVoice", voiceMap[brandVoice]);
+                } else {
+                  form.setValue("brandVoice", "professional");
+                }
+              }
+              
+              // Set other values directly
               if (parsedContent.services) form.setValue("services", String(parsedContent.services));
               if (parsedContent.valueProposition) form.setValue("valueProposition", String(parsedContent.valueProposition));
             }
