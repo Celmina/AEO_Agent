@@ -61,15 +61,15 @@ export default function CompanySetup() {
   useEffect(() => {
     if (websites && Array.isArray(websites) && websites.length > 0) {
       const website = websites[0]; // Get first website
-      if (website && website.scraped_content) {
+      if (website && website.scrapedContent) {
         try {
           let parsedContent: Record<string, any> = {};
           
           // Handle different data types
-          if (typeof website.scraped_content === 'string') {
-            parsedContent = JSON.parse(website.scraped_content);
-          } else if (typeof website.scraped_content === 'object') {
-            parsedContent = website.scraped_content as Record<string, any>;
+          if (typeof website.scrapedContent === 'string') {
+            parsedContent = JSON.parse(website.scrapedContent);
+          } else if (typeof website.scrapedContent === 'object') {
+            parsedContent = website.scrapedContent as Record<string, any>;
           }
           
           if (Object.keys(parsedContent).length > 0) {
@@ -254,7 +254,8 @@ export default function CompanySetup() {
                     <FormLabel>Industry</FormLabel>
                     <Select 
                       onValueChange={field.onChange} 
-                      defaultValue={field.value}
+                      defaultValue={field.value || ""}
+                      value={field.value || ""}
                     >
                       <FormControl>
                         <SelectTrigger>
@@ -303,7 +304,8 @@ export default function CompanySetup() {
                     <FormLabel>Brand Voice</FormLabel>
                     <Select 
                       onValueChange={field.onChange} 
-                      defaultValue={field.value}
+                      defaultValue={field.value || ""}
+                      value={field.value || ""}
                     >
                       <FormControl>
                         <SelectTrigger>
