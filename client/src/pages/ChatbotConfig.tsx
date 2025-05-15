@@ -27,6 +27,7 @@ export default function ChatbotConfig() {
     brandVoice: "Professional, friendly, and helpful",
     services: "",
     valueProposition: "",
+    companyGuidelines: "",
   });
   
   const [chatbotSettings, setChatbotSettings] = useState({
@@ -79,6 +80,7 @@ export default function ChatbotConfig() {
         brandVoice: data.brandVoice || companyInfo.brandVoice,
         services: data.services || companyInfo.services,
         valueProposition: data.valueProposition || companyInfo.valueProposition,
+        companyGuidelines: data.additionalInfo || companyInfo.companyGuidelines,
       });
       
       // Update chatbot initial message with company name
@@ -149,7 +151,8 @@ export default function ChatbotConfig() {
       targetAudience: companyInfo.targetAudience,
       brandVoice: companyInfo.brandVoice,
       services: companyInfo.services,
-      valueProposition: companyInfo.valueProposition
+      valueProposition: companyInfo.valueProposition,
+      additionalInfo: companyInfo.companyGuidelines // Store guidelines in additionalInfo field
     });
     
     // Then create/update chatbot
@@ -161,7 +164,10 @@ export default function ChatbotConfig() {
         primaryColor: chatbotSettings.primaryColor,
         position: chatbotSettings.position,
         initialMessage: chatbotSettings.initialMessage,
-        collectEmail: chatbotSettings.collectEmail
+        collectEmail: chatbotSettings.collectEmail,
+        configuration: JSON.stringify({
+          companyGuidelines: companyInfo.companyGuidelines
+        })
       });
     } else {
       toast({
@@ -311,6 +317,21 @@ export default function ChatbotConfig() {
                         onChange={handleCompanyInfoChange}
                         placeholder="What makes your company unique and why should customers choose you?"
                       />
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <Label htmlFor="companyGuidelines">Company Guidelines/Additional Information</Label>
+                      <Textarea 
+                        id="companyGuidelines" 
+                        name="companyGuidelines" 
+                        rows={5}
+                        placeholder="Add any additional information, guidelines, or specific details about your company that the chatbot should know. This will improve the accuracy of responses."
+                        onChange={(e) => setCompanyInfo({...companyInfo, companyGuidelines: e.target.value})}
+                        value={companyInfo.companyGuidelines || ''}
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        This information will be used to train the AI about your company. Be as detailed as possible.
+                      </p>
                     </div>
                     
                     <Button onClick={() => setActiveTab("appearance")} className="w-full md:w-auto">
