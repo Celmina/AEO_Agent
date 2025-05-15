@@ -59,20 +59,20 @@ export default function CompanySetup() {
   
   // When websites data is loaded, extract the scraped content
   useEffect(() => {
-    if (websites && websites.length > 0) {
+    if (websites && Array.isArray(websites) && websites.length > 0) {
       const website = websites[0]; // Get first website
-      if (website.scraped_content) {
+      if (website && website.scraped_content) {
         try {
-          let parsedContent;
+          let parsedContent: Record<string, any> = {};
           
           // Handle different data types
           if (typeof website.scraped_content === 'string') {
             parsedContent = JSON.parse(website.scraped_content);
           } else if (typeof website.scraped_content === 'object') {
-            parsedContent = website.scraped_content;
+            parsedContent = website.scraped_content as Record<string, any>;
           }
           
-          if (parsedContent) {
+          if (Object.keys(parsedContent).length > 0) {
             setScrapedData(parsedContent);
             
             // Prefill form with scraped data if no profile exists
@@ -94,7 +94,7 @@ export default function CompanySetup() {
                 };
                 
                 // Try to find matching industry or default to "other"
-                const lowercaseIndustry = parsedContent.industry.toLowerCase();
+                const lowercaseIndustry = String(parsedContent.industry).toLowerCase();
                 for (const [key, value] of Object.entries(industryMap)) {
                   if (lowercaseIndustry.includes(key)) {
                     form.setValue("industry", value);
@@ -104,10 +104,10 @@ export default function CompanySetup() {
               }
               
               // Set other values if they exist
-              if (parsedContent.targetAudience) form.setValue("targetAudience", parsedContent.targetAudience);
-              if (parsedContent.brandVoice) form.setValue("brandVoice", parsedContent.brandVoice);
-              if (parsedContent.services) form.setValue("services", parsedContent.services);
-              if (parsedContent.valueProposition) form.setValue("valueProposition", parsedContent.valueProposition);
+              if (parsedContent.targetAudience) form.setValue("targetAudience", String(parsedContent.targetAudience));
+              if (parsedContent.brandVoice) form.setValue("brandVoice", String(parsedContent.brandVoice));
+              if (parsedContent.services) form.setValue("services", String(parsedContent.services));
+              if (parsedContent.valueProposition) form.setValue("valueProposition", String(parsedContent.valueProposition));
             }
           }
         } catch (error) {
@@ -119,15 +119,23 @@ export default function CompanySetup() {
   
   // When profile data is loaded, populate the form
   useEffect(() => {
-    if (profile) {
+    if (profile && typeof profile === 'object') {
+      const companyName = 'companyName' in profile ? String(profile.companyName || "") : "";
+      const industry = 'industry' in profile ? String(profile.industry || "") : "";
+      const targetAudience = 'targetAudience' in profile ? String(profile.targetAudience || "") : "";
+      const brandVoice = 'brandVoice' in profile ? String(profile.brandVoice || "") : "";
+      const services = 'services' in profile ? String(profile.services || "") : "";
+      const valueProposition = 'valueProposition' in profile ? String(profile.valueProposition || "") : "";
+      const additionalInfo = 'additionalInfo' in profile ? String(profile.additionalInfo || "") : "";
+      
       form.reset({
-        companyName: profile.companyName || "",
-        industry: profile.industry || "",
-        targetAudience: profile.targetAudience || "",
-        brandVoice: profile.brandVoice || "",
-        services: profile.services || "",
-        valueProposition: profile.valueProposition || "",
-        additionalInfo: profile.additionalInfo || ""
+        companyName,
+        industry,
+        targetAudience,
+        brandVoice,
+        services,
+        valueProposition,
+        additionalInfo
       });
     }
   }, [profile, form]);
