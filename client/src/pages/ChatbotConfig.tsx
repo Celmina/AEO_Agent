@@ -11,13 +11,16 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
-import { Loader2 } from "lucide-react";
+import { Loader2, CheckCircle, AlertCircle } from "lucide-react";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 export default function ChatbotConfig() {
   const { toast } = useToast();
   const [, setLocation] = useLocation();
+  const queryClient = useQueryClient();
+  const [showSuccessAlert, setShowSuccessAlert] = useState(false);
   const [activeTab, setActiveTab] = useState("basic");
   const [isLoading, setIsLoading] = useState(true);
   const [companyInfo, setCompanyInfo] = useState({
@@ -119,6 +122,17 @@ export default function ChatbotConfig() {
     }));
   };
   
+  // Query existing chatbots
+  const chatbotsQuery = useQuery({
+    queryKey: ["/api/chatbots"]
+  });
+  
+  // Check if we have a pending chatbot
+  const pendingChatbot = chatbotsQuery.data 
+    ? (chatbotsQuery.data as any[]).find(chatbot => chatbot.status === 'pending') 
+    : null;
+  
+  // Mutations
   const createChatbotMutation = useMutation({
     mutationFn: async (data: any) => {
       const response = await apiRequest("POST", "/api/chatbots", data);
@@ -138,6 +152,35 @@ export default function ChatbotConfig() {
       toast({
         title: "Error",
         description: "Failed to create chatbot. Please try again.",
+        variant: "destructive"
+      });
+    }
+  });
+  
+  // Mutation to approve a chatbot
+  const approveChatbotMutation = useMutation({
+    mutationFn: async (chatbotId: number) => {
+      const response = await apiRequest("POST", `/api/chatbots/${chatbotId}/approve`);
+      return response.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Chatbot Approved",
+        description: "Your chatbot is now active and ready for deployment.",
+      });
+      // Invalidate chatbots query to refetch with updated data
+      queryClient.invalidateQueries({ queryKey: ["/api/chatbots"] });
+      // Show success alert
+      setShowSuccessAlert(true);
+      setTimeout(() => {
+        setShowSuccessAlert(false);
+        setLocation("/dashboard?success=chatbot-approved");
+      }, 2000);
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to approve chatbot. Please try again.",
         variant: "destructive"
       });
     }
