@@ -253,6 +253,9 @@ export default function ChatbotConfig() {
     });
   };
   
+  // Variable to check if we have pending chatbots
+  const hasPendingChatbots = pendingChatbots.length > 0;
+  
   // Handle approving a chatbot
   const handleApprovePendingChatbot = () => {
     if (pendingChatbot) {
@@ -275,7 +278,7 @@ export default function ChatbotConfig() {
         )}
         
         {/* Pending Chatbot Approval Section - only show if we have a pending chatbot */}
-        {pendingChatbot && (
+        {hasPendingChatbots && (
           <Alert className="bg-blue-50 border-blue-100">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center w-full">
               <div className="flex-1">
