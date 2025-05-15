@@ -24,18 +24,22 @@ export function WebsiteConnection({
 }: WebsiteConnectionProps) {
   const { toast } = useToast();
   
-  // Query chatbot data to know if one exists
+  // Query chatbot data to know if one exists and is active
   const chatbotQuery = useQuery<any[]>({
     queryKey: ["/api/chatbots"]
   });
   
-  const hasChatbot = chatbotQuery.data && Array.isArray(chatbotQuery.data) && chatbotQuery.data.length > 0;
+  const chatbot = chatbotQuery.data && Array.isArray(chatbotQuery.data) && chatbotQuery.data.length > 0 
+    ? chatbotQuery.data[0] 
+    : null;
+  const hasChatbot = !!chatbot;
+  const isChatbotActive = hasChatbot && chatbot.status === 'active';
   
   const snippetCode = `<script 
   src="${window.location.origin}/chatbot-v2.js" 
   id="${siteId}"
-  data-position="${hasChatbot ? chatbotQuery.data[0].position : 'bottom-right'}"
-  data-color="${hasChatbot ? chatbotQuery.data[0].primaryColor : '#4f46e5'}"
+  data-position="${hasChatbot ? chatbot.position : 'bottom-right'}"
+  data-color="${hasChatbot ? chatbot.primaryColor : '#4f46e5'}"
   data-title="Chat with our AI Assistant"
 ></script>`;
   
