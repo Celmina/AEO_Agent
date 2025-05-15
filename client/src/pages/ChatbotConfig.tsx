@@ -127,10 +127,13 @@ export default function ChatbotConfig() {
     queryKey: ["/api/chatbots"]
   });
   
-  // Check if we have a pending chatbot
-  const pendingChatbot = chatbotsQuery.data 
-    ? (chatbotsQuery.data as any[]).find(chatbot => chatbot.status === 'pending') 
-    : null;
+  // Find any pending chatbots
+  const pendingChatbots = chatbotsQuery.data 
+    ? (chatbotsQuery.data as any[]).filter(chatbot => chatbot.status === 'pending') 
+    : [];
+    
+  // Get the first pending chatbot if there is one
+  const pendingChatbot = pendingChatbots.length > 0 ? pendingChatbots[0] : null;
   
   // Mutations
   const createChatbotMutation = useMutation({
