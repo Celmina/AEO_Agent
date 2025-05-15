@@ -719,6 +719,11 @@ export async function sendMessage(req: Request, res: Response) {
       if (profileResult && profileResult.rows && profileResult.rows.length > 0) {
         companyInfo = profileResult.rows[0];
         log(`Found company profile for chatbot's user ID ${session.chatbot.userId}`, 'chatbot');
+        
+        // Check for company guidelines in additional_info
+        if (companyInfo.additional_info) {
+          log(`Found company guidelines in profile. Length: ${companyInfo.additional_info.length} chars`, 'chatbot');
+        }
       }
     } catch (dbError) {
       log(`Error fetching company profile: ${dbError}`, 'error');
@@ -813,7 +818,11 @@ export async function sendMessage(req: Request, res: Response) {
     // We want the context to be specific to this website only
     log(`Creating AI context with company name: ${companyInfo.companyName}`, 'chatbot');
     
-    const context = `
+    // Check if there are company guidelines available
+    const companyGuidelines = companyInfo.additional_info || '';
+    
+    // Create context for AI with company guidelines
+    let context = `
 IMPORTANT: You are a helpful assistant specifically for the website "${companyInfo.websiteDomain || companyInfo.companyName}".
 Only answer questions about this company/website. If asked about ecom.ai, explain you are here to help with 
 ${companyInfo.companyName} information only.
@@ -825,7 +834,16 @@ Brand Voice: ${companyInfo.brandVoice}
 Services/Products: ${companyInfo.services}
 Value Proposition: ${companyInfo.valueProposition}
 Website: ${companyInfo.websiteDomain || 'this website'}
+`;
 
+    // Add company guidelines if available
+    if (companyGuidelines && companyGuidelines.trim().length > 0) {
+      // Append JSON with guidelines for the OpenAI service to extract
+      context += `\n{"companyGuidelines": "${companyGuidelines.replace(/"/g, '\\"')}"}\n`;
+      log(`Added company guidelines to AI context (${companyGuidelines.length} chars)`, 'chatbot');
+    }
+    
+    context += `
 ANSWER ONLY QUESTIONS ABOUT THIS WEBSITE/COMPANY. For questions about other topics, politely explain you only
 have information about ${companyInfo.companyName}.
     `;
