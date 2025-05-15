@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 import { storage } from "../storage";
-import { insertWebsiteSchema, chatbots } from "@shared/schema";
+import { insertWebsiteSchema, chatbots, websites } from "@shared/schema";
 import { randomBytes } from "crypto";
 import { z, ZodError } from "zod";
 import { db, pool } from "../db";
@@ -43,14 +43,10 @@ export async function getWebsites(req: Request, res: Response) {
     const userId = (req.user as any).id;
     
     // Use direct database query to ensure we get all fields
-    // Import websites schema from shared schema to avoid reference error
-    const { websites: websitesSchema } = await import('@shared/schema');
-    const websites = await db.query.websites.findMany({
-      where: eq(websitesSchema.userId, userId)
-    });
+    const result = await db.select().from(websites).where(eq(websites.userId, userId));
     
     // Format websites to make scraped_content backward compatible with scrapedContent
-    const formattedWebsites = websites.map(website => ({
+    const formattedWebsites = result.map(website => ({
       ...website,
       scraped_content: website.scrapedContent // Add this for backward compatibility
     }));
