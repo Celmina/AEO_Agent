@@ -17,6 +17,7 @@ import * as campaignsController from "./controllers/campaigns";
 import * as statsController from "./controllers/stats";
 import * as chatbotController from "./controllers/chatbot";
 import * as aeoContentController from "./controllers/aeoContent";
+import * as simpleChatbotController from "./controllers/simpleChatbot";
 
 // Middleware
 import { isAuthenticated } from "./middleware/auth";

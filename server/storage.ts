@@ -58,10 +58,12 @@ export class MemStorage implements IStorage {
     this.websites = new Map();
     this.companyProfiles = new Map();
     this.campaigns = new Map();
+    this.chatbots = new Map();
     this.currentUserId = 1;
     this.currentWebsiteId = 1;
     this.currentProfileId = 1;
     this.currentCampaignId = 1;
+    this.currentChatbotId = 1;
   }
 
   // User methods
@@ -227,6 +229,19 @@ export class MemStorage implements IStorage {
 
   async deleteCampaign(id: number): Promise<boolean> {
     return this.campaigns.delete(id);
+  }
+  
+  // Chatbot methods
+  async getChatbotsByWebsiteId(websiteId: number): Promise<Chatbot[]> {
+    const chatbots: Chatbot[] = [];
+    
+    for (const chatbot of this.chatbots.values()) {
+      if (chatbot.websiteId === websiteId) {
+        chatbots.push(chatbot);
+      }
+    }
+    
+    return chatbots;
   }
 }
 
@@ -442,6 +457,17 @@ export class DatabaseStorage implements IStorage {
     } catch (error) {
       console.error("Error deleting campaign:", error);
       return false;
+    }
+  }
+  
+  // Chatbot methods
+  async getChatbotsByWebsiteId(websiteId: number): Promise<Chatbot[]> {
+    try {
+      const results = await db.select().from(chatbots).where(eq(chatbots.websiteId, websiteId));
+      return results;
+    } catch (error) {
+      console.error("Error getting chatbots by website ID:", error);
+      return [];
     }
   }
 }
