@@ -32,6 +32,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.use('/chatbot-v2.js', (req, res) => {
     res.sendFile(path.resolve(process.cwd(), 'client/public/chatbot-v2.js'));
   });
+  
+  app.use('/simple-chatbot.js', (req, res) => {
+    res.sendFile(path.resolve(process.cwd(), 'client/public/simple-chatbot.js'));
+  });
   // Session store
   const SessionStore = MemoryStore(session);
   app.use(
@@ -152,6 +156,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/public/chat-sessions", chatbotController.createChatSession);
   app.post("/api/public/chat-sessions/:sessionId/messages", chatbotController.sendMessage);
   app.get("/api/public/chat-sessions/:sessionId/messages", chatbotController.getMessages);
+  
+  // Simple OpenAI-powered chatbot API (no scraping required)
+  app.post("/api/public/simple-chat-sessions", simpleChatbotController.createSimpleChatSession);
+  app.post("/api/public/simple-chat-messages", simpleChatbotController.sendSimpleMessage);
 
   const httpServer = createServer(app);
 
