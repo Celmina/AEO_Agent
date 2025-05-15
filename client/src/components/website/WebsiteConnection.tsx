@@ -2,8 +2,10 @@ import React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { AlertCircle, CheckCircle, Copy, Settings } from "lucide-react";
+import { AlertCircle, CheckCircle, Copy, Info, Settings } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { Link } from "wouter";
+import { useQuery } from "@tanstack/react-query";
 
 interface WebsiteConnectionProps {
   domain: string;
@@ -22,11 +24,18 @@ export function WebsiteConnection({
 }: WebsiteConnectionProps) {
   const { toast } = useToast();
   
+  // Query chatbot data to know if one exists
+  const chatbotQuery = useQuery<any[]>({
+    queryKey: ["/api/chatbots"]
+  });
+  
+  const hasChatbot = chatbotQuery.data && Array.isArray(chatbotQuery.data) && chatbotQuery.data.length > 0;
+  
   const snippetCode = `<script 
   src="${window.location.origin}/chatbot-v2.js" 
   id="${siteId}"
-  data-position="bottom-right"
-  data-color="#4f46e5"
+  data-position="${hasChatbot ? chatbotQuery.data[0].position : 'bottom-right'}"
+  data-color="${hasChatbot ? chatbotQuery.data[0].primaryColor : '#4f46e5'}"
   data-title="Chat with our AI Assistant"
 ></script>`;
   
@@ -75,7 +84,9 @@ export function WebsiteConnection({
               <div>
                 <h4 className="font-medium text-green-800">Website Registered</h4>
                 <p className="text-sm text-green-700">
-                  Your website is registered. Make sure the code snippet is added to your site to enable the chatbot and AEO features.
+                  Your website is registered. {hasChatbot 
+                    ? "Add the code snippet below to your site to enable the chatbot." 
+                    : "Configure your chatbot to get an installation code."}
                 </p>
               </div>
             </div>
@@ -85,33 +96,50 @@ export function WebsiteConnection({
               <div>
                 <h4 className="font-medium text-yellow-800">Website Registration Pending</h4>
                 <p className="text-sm text-yellow-700">
-                  Click "Edit" to register your website, then add the code snippet below to enable the chatbot.
+                  Click "Edit" to register your website.
                 </p>
               </div>
             </div>
           )}
           
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Installation Code
-            </label>
-            <div className="relative">
-              <div className="p-3 bg-gray-50 border border-gray-200 rounded-md font-mono text-sm overflow-x-auto">
-                {snippetCode}
+          {hasChatbot ? (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Installation Code
+              </label>
+              <div className="relative">
+                <div className="p-3 bg-gray-50 border border-gray-200 rounded-md font-mono text-sm overflow-x-auto">
+                  {snippetCode}
+                </div>
+                <Button
+                  className="absolute right-2 top-2"
+                  size="sm"
+                  variant="ghost"
+                  onClick={handleCopyClick}
+                >
+                  <Copy className="h-4 w-4" />
+                </Button>
               </div>
-              <Button
-                className="absolute right-2 top-2"
-                size="sm"
-                variant="ghost"
-                onClick={handleCopyClick}
-              >
-                <Copy className="h-4 w-4" />
-              </Button>
+              <p className="mt-2 text-xs text-gray-500">
+                Add this code right before the closing &lt;/body&gt; tag of your website.
+              </p>
             </div>
-            <p className="mt-2 text-xs text-gray-500">
-              Add this code right before the closing &lt;/body&gt; tag of your website.
-            </p>
-          </div>
+          ) : (
+            <div className="flex items-start p-3 bg-blue-50 rounded-md">
+              <Info className="h-5 w-5 text-blue-600 mr-2 mt-0.5" />
+              <div>
+                <h4 className="font-medium text-blue-800">Chatbot Not Configured</h4>
+                <p className="text-sm text-blue-700">
+                  You need to configure and approve your chatbot before getting the installation code.
+                </p>
+                <Link href="/chatbot-config">
+                  <Button className="mt-2" size="sm" variant="outline">
+                    Configure Chatbot
+                  </Button>
+                </Link>
+              </div>
+            </div>
+          )}
         </div>
       </CardContent>
     </Card>

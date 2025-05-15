@@ -1,6 +1,7 @@
 import express, { type Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
+import { pool } from "./db";
 import session from "express-session";
 import MemoryStore from "memorystore";
 import passport from "passport";
@@ -117,6 +118,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/stats/aeo", isAuthenticated, statsController.getAeoStats);
   
   // Chatbot routes (authenticated)
+  app.get("/api/chatbots", isAuthenticated, async (req, res) => {
+    try {
+      const userId = (req.user as any).id;
+      const result = await pool.query(`
+        SELECT c.* FROM chatbots c
+        JOIN websites w ON c.website_id = w.id
+        WHERE w.user_id = $1
+      `, [userId]);
+      
+      res.json(result.rows);
+    } catch (error) {
+      console.error("Error fetching chatbots:", error);
+      res.status(500).json({ message: "Failed to fetch chatbots" });
+    }
+  });
   app.post("/api/chatbots", isAuthenticated, chatbotController.createChatbot);
   app.get("/api/chatbots/:id", isAuthenticated, chatbotController.getChatbot);
   app.put("/api/chatbots/:id", isAuthenticated, chatbotController.updateChatbot);
