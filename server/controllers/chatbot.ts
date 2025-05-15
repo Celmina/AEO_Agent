@@ -638,7 +638,16 @@ export async function sendMessage(req: Request, res: Response) {
       if (website) {
         // Safely extract company name from profile if available
         const profile = website.user?.companyProfile;
-        companyName = profile ? profile.companyName : website.name;
+        // Check if profile is an array or a single object
+        if (profile) {
+          if (Array.isArray(profile)) {
+            companyName = profile.length > 0 && profile[0].companyName ? profile[0].companyName : website.name;
+          } else {
+            companyName = profile.companyName || website.name;
+          }
+        } else {
+          companyName = website.name;
+        }
         siteName = website.name || "our website";
         
         // Create a properly personalized response
