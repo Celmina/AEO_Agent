@@ -641,12 +641,16 @@ export async function sendMessage(req: Request, res: Response) {
         // Check if profile is an array or a single object
         if (profile) {
           if (Array.isArray(profile)) {
-            companyName = profile.length > 0 && profile[0].companyName ? profile[0].companyName : website.name;
+            companyName = profile.length > 0 && profile[0] && profile[0].companyName ? String(profile[0].companyName) : String(website.name || '');
+          } else if (profile && typeof profile === 'object') {
+            // Cast to any to bypass TypeScript strict checking
+            const profileAny = profile as any;
+            companyName = String(profileAny.companyName || website.name || '');
           } else {
-            companyName = profile.companyName || website.name;
+            companyName = String(website.name || '');
           }
         } else {
-          companyName = website.name;
+          companyName = String(website.name || 'our website');
         }
         siteName = website.name || "our website";
         
