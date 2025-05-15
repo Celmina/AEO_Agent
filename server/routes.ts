@@ -136,6 +136,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/chatbots", isAuthenticated, chatbotController.createChatbot);
   app.get("/api/chatbots/:id", isAuthenticated, chatbotController.getChatbot);
   app.put("/api/chatbots/:id", isAuthenticated, chatbotController.updateChatbot);
+  app.post("/api/chatbots/:id/approve", isAuthenticated, chatbotController.approveChatbot);
 
   // AEO content routes
   app.get("/api/aeo-content", isAuthenticated, aeoContentController.getAeoContent);

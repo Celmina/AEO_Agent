@@ -111,7 +111,7 @@ export function ChatbotPreview({
             </Button>
             <Button size="sm" onClick={onApprove}>
               <i className="fas fa-check mr-2"></i>
-              Approve & Deploy
+              Submit for Approval
             </Button>
           </div>
         )}

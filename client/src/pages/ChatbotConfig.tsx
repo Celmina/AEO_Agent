@@ -126,12 +126,12 @@ export default function ChatbotConfig() {
     },
     onSuccess: () => {
       toast({
-        title: "Chatbot Approved",
-        description: "Your chatbot is now ready for deployment to your website.",
+        title: "Chatbot Configuration Submitted",
+        description: "Your chatbot configuration is pending approval.",
       });
       
       setTimeout(() => {
-        setLocation("/dashboard?success=chatbot-created");
+        setLocation("/dashboard?status=pending-approval");
       }, 1500);
     },
     onError: () => {

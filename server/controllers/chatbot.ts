@@ -124,12 +124,13 @@ export async function createChatbot(req: Request, res: Response) {
       return res.status(400).json({ message: 'A chatbot already exists for this website' });
     }
 
-    // Create new chatbot
+    // Create new chatbot with pending status
     const [newChatbot] = await db.insert(chatbots)
       .values({
         ...chatbotData,
         websiteId,
-        userId: userId
+        userId: userId,
+        status: 'pending' // Set initial status to pending
       })
       .returning();
 
@@ -137,6 +138,53 @@ export async function createChatbot(req: Request, res: Response) {
   } catch (error) {
     log(`Error creating chatbot: ${error}`, 'error');
     return res.status(500).json({ message: 'Failed to create chatbot', error: String(error) });
+  }
+}
+
+/**
+ * Approve a chatbot
+ */
+export async function approveChatbot(req: Request, res: Response) {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ message: 'Not authenticated' });
+    }
+
+    const userId = (req.user as any).id;
+    const chatbotId = parseInt(req.params.id);
+    
+    if (isNaN(chatbotId)) {
+      return res.status(400).json({ message: 'Invalid chatbot ID' });
+    }
+    
+    // Find the chatbot
+    const chatbot = await db.query.chatbots.findFirst({
+      where: and(
+        eq(chatbots.id, chatbotId),
+        eq(chatbots.userId, userId)
+      )
+    });
+    
+    if (!chatbot) {
+      return res.status(404).json({ message: 'Chatbot not found or not owned by you' });
+    }
+    
+    // Update the chatbot status to active
+    const [updatedChatbot] = await db.update(chatbots)
+      .set({
+        status: 'active',
+        updatedAt: new Date()
+      })
+      .where(eq(chatbots.id, chatbotId))
+      .returning();
+    
+    return res.status(200).json({
+      message: 'Chatbot approved successfully',
+      chatbot: updatedChatbot
+    });
+  } catch (error) {
+    log(`Error approving chatbot: ${error}`, 'error');
+    return res.status(500).json({ message: 'Failed to approve chatbot', error: String(error) });
   }
 }
 

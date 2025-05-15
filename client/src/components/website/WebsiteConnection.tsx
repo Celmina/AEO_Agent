@@ -107,27 +107,44 @@ export function WebsiteConnection({
           )}
           
           {hasChatbot ? (
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Installation Code
-              </label>
-              <div className="relative">
-                <div className="p-3 bg-gray-50 border border-gray-200 rounded-md font-mono text-sm overflow-x-auto">
-                  {snippetCode}
+            isChatbotActive ? (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Installation Code
+                </label>
+                <div className="relative">
+                  <div className="p-3 bg-gray-50 border border-gray-200 rounded-md font-mono text-sm overflow-x-auto">
+                    {snippetCode}
+                  </div>
+                  <Button
+                    className="absolute right-2 top-2"
+                    size="sm"
+                    variant="ghost"
+                    onClick={handleCopyClick}
+                  >
+                    <Copy className="h-4 w-4" />
+                  </Button>
                 </div>
-                <Button
-                  className="absolute right-2 top-2"
-                  size="sm"
-                  variant="ghost"
-                  onClick={handleCopyClick}
-                >
-                  <Copy className="h-4 w-4" />
-                </Button>
+                <p className="mt-2 text-xs text-gray-500">
+                  Add this code right before the closing &lt;/body&gt; tag of your website.
+                </p>
               </div>
-              <p className="mt-2 text-xs text-gray-500">
-                Add this code right before the closing &lt;/body&gt; tag of your website.
-              </p>
-            </div>
+            ) : (
+              <div className="flex items-start p-3 bg-yellow-50 rounded-md">
+                <Info className="h-5 w-5 text-yellow-600 mr-2 mt-0.5" />
+                <div>
+                  <h4 className="font-medium text-yellow-800">Chatbot Approval Pending</h4>
+                  <p className="text-sm text-yellow-700">
+                    Your chatbot configuration is complete, but needs to be approved before you can install it.
+                  </p>
+                  <Link href="/chatbot-config">
+                    <Button className="mt-2" size="sm" variant="outline">
+                      View Chatbot
+                    </Button>
+                  </Link>
+                </div>
+              </div>
+            )
           ) : (
             <div className="flex items-start p-3 bg-blue-50 rounded-md">
               <Info className="h-5 w-5 text-blue-600 mr-2 mt-0.5" />
