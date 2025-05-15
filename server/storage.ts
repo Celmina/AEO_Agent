@@ -3,7 +3,8 @@ import {
   Website, InsertWebsite,
   CompanyProfile, InsertCompanyProfile,
   Campaign, InsertCampaign,
-  users, websites, companyProfiles, campaigns
+  Chatbot, InsertChatbot,
+  users, websites, companyProfiles, campaigns, chatbots
 } from "@shared/schema";
 import { randomBytes } from "crypto";
 import bcrypt from "bcryptjs";
@@ -24,6 +25,9 @@ export interface IStorage {
   updateWebsite(id: number, website: Partial<Website>): Promise<Website | undefined>;
   deleteWebsite(id: number): Promise<boolean>;
   
+  // Chatbot methods
+  getChatbotsByWebsiteId(websiteId: number): Promise<Chatbot[]>;
+  
   // Company profile methods
   getCompanyProfile(userId: number): Promise<CompanyProfile | undefined>;
   createCompanyProfile(profile: InsertCompanyProfile): Promise<CompanyProfile>;
@@ -42,10 +46,12 @@ export class MemStorage implements IStorage {
   private websites: Map<number, Website>;
   private companyProfiles: Map<number, CompanyProfile>;
   private campaigns: Map<number, Campaign>;
+  private chatbots: Map<number, Chatbot>;
   private currentUserId: number;
   private currentWebsiteId: number;
   private currentProfileId: number;
   private currentCampaignId: number;
+  private currentChatbotId: number;
 
   constructor() {
     this.users = new Map();
