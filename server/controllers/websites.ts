@@ -205,36 +205,62 @@ export async function createWebsite(req: Request, res: Response) {
       userId: number, 
       websiteId: number
     ) => {
-      // Create chatbot with dynamic info based on website name
-      const siteName = websiteData.name || extractDomainName(websiteData.domain);
-      const initialMessage = `Hello! How can I help you with information about ${siteName}?`;
-      
-      // After website creation, set up the default chatbot
-      // Use the raw pool query to ensure it works consistently
-      const query = `
-        INSERT INTO chatbots 
-        (name, user_id, website_id, initial_message, primary_color, position, collect_email, status, created_at, updated_at)
-        VALUES 
-        ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-        RETURNING id`;
+      try {
+        // First check if a chatbot already exists for this website
+        const existingChatbotQuery = `
+          SELECT id FROM chatbots WHERE website_id = $1
+        `;
+        const existingResult = await pool.query(existingChatbotQuery, [websiteId]);
         
-      const values = [
-        `${siteName} Assistant`,
-        userId,
-        websiteId,
-        initialMessage,
-        "#4f46e5",  // Default primary color
-        "bottom-right", // Default position
-        true,       // Default to collecting emails
-        "active",   // Set as active by default
-        new Date(),
-        new Date()
-      ];
-      
-      // Execute direct query to avoid ORM-specific issues
-      const result = await pool.query(query, values);
-      
-      log(`Automatically created chatbot for website ${websiteId}`, 'website');
+        if (existingResult.rows && existingResult.rows.length > 0) {
+          log(`Chatbot already exists for website ${websiteId}`, 'website');
+          return;
+        }
+        
+        // Create chatbot with dynamic info based on website name
+        const siteName = websiteData.name || extractDomainName(websiteData.domain);
+        const initialMessage = `Hello! How can I help you with information about ${siteName}?`;
+        
+        // Double-check that the website exists before trying to create a chatbot
+        const websiteCheckQuery = `
+          SELECT id FROM websites WHERE id = $1
+        `;
+        const websiteCheck = await pool.query(websiteCheckQuery, [websiteId]);
+        
+        if (!websiteCheck.rows || websiteCheck.rows.length === 0) {
+          log(`Website with ID ${websiteId} not found, cannot create chatbot`, 'error');
+          return;
+        }
+        
+        // After website creation, set up the default chatbot
+        // Use the raw pool query to ensure it works consistently
+        const query = `
+          INSERT INTO chatbots 
+          (name, user_id, website_id, initial_message, primary_color, position, collect_email, status, created_at, updated_at)
+          VALUES 
+          ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+          RETURNING id`;
+          
+        const values = [
+          `${siteName} Assistant`,
+          userId,
+          websiteId,
+          initialMessage,
+          "#4f46e5",  // Default primary color
+          "bottom-right", // Default position
+          true,       // Default to collecting emails
+          "active",   // Set as active by default
+          new Date(),
+          new Date()
+        ];
+        
+        // Execute direct query to avoid ORM-specific issues
+        const result = await pool.query(query, values);
+        
+        log(`Automatically created chatbot for website ${websiteId}`, 'website');
+      } catch (error) {
+        log(`Error creating chatbot for website ${websiteId}: ${error}`, 'error');
+      }
     };
     
     // Auto-create a default chatbot for this website (with delay to ensure website record exists)
