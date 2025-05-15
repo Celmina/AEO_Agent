@@ -43,8 +43,10 @@ export async function getWebsites(req: Request, res: Response) {
     const userId = (req.user as any).id;
     
     // Use direct database query to ensure we get all fields
+    // Import websites schema from shared schema to avoid reference error
+    const { websites: websitesSchema } = await import('@shared/schema');
     const websites = await db.query.websites.findMany({
-      where: eq(websites.userId, userId)
+      where: eq(websitesSchema.userId, userId)
     });
     
     // Format websites to make scraped_content backward compatible with scrapedContent
