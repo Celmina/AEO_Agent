@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { ChatbotPreview } from "@/components/chatbot/ChatbotPreview";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -11,27 +11,88 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
+import { Loader2 } from "lucide-react";
 
 export default function ChatbotConfig() {
   const { toast } = useToast();
   const [, setLocation] = useLocation();
   const [activeTab, setActiveTab] = useState("basic");
+  const [isLoading, setIsLoading] = useState(true);
   const [companyInfo, setCompanyInfo] = useState({
-    companyName: "YourCompany",
+    companyName: "",
     industry: "Technology",
-    targetAudience: "Small to medium businesses looking to optimize their online presence",
+    targetAudience: "",
     brandVoice: "Professional, friendly, and helpful",
-    services: "AI-powered chatbot integration, Answer Engine Optimization (AEO), and website content optimization",
-    valueProposition: "Increase website engagement, improve SEO rankings, and convert more visitors with AI-powered conversation solutions",
+    services: "",
+    valueProposition: "",
   });
   
   const [chatbotSettings, setChatbotSettings] = useState({
     primaryColor: "#4f46e5",
     position: "bottom-right",
-    initialMessage: `Hello! I'm the ${companyInfo.companyName} AI assistant. How can I help you today?`,
+    initialMessage: "",
     collectEmail: true,
     responseTime: "instant",
   });
+  
+  // Fetch the latest website data
+  const websitesQuery = useQuery<any[]>({
+    queryKey: ["/api/websites"]
+  });
+
+  // Fetch company profile data (if it exists)
+  const companyProfileQuery = useQuery<any>({
+    queryKey: ["/api/company/profile"]
+  });
+
+  // Effect to handle website data
+  useEffect(() => {
+    if (websitesQuery.data && websitesQuery.data.length > 0) {
+      const website = websitesQuery.data[0];
+      
+      // Set company name from website
+      if (website.name) {
+        setCompanyInfo(prev => ({
+          ...prev,
+          companyName: website.name
+        }));
+        
+        // Update chatbot initial message with company name
+        setChatbotSettings(prev => ({
+          ...prev,
+          initialMessage: `Hello! I'm the ${website.name} AI assistant. How can I help you today?`
+        }));
+      }
+    }
+  }, [websitesQuery.data]);
+
+  // Effect to handle company profile data
+  useEffect(() => {
+    if (companyProfileQuery.data) {
+      const data = companyProfileQuery.data;
+      setCompanyInfo({
+        companyName: data.companyName || companyInfo.companyName,
+        industry: data.industry || companyInfo.industry,
+        targetAudience: data.targetAudience || companyInfo.targetAudience,
+        brandVoice: data.brandVoice || companyInfo.brandVoice,
+        services: data.services || companyInfo.services,
+        valueProposition: data.valueProposition || companyInfo.valueProposition,
+      });
+      
+      // Update chatbot initial message with company name
+      setChatbotSettings(prev => ({
+        ...prev,
+        initialMessage: `Hello! I'm the ${data.companyName} AI assistant. How can I help you today?`
+      }));
+    }
+    
+    // Set loading state based on both queries
+    if (!websitesQuery.isLoading && !companyProfileQuery.isLoading) {
+      setIsLoading(false);
+    }
+  }, [companyProfileQuery.data, websitesQuery.isLoading, companyProfileQuery.isLoading]);
   
   const handleCompanyInfoChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -39,6 +100,14 @@ export default function ChatbotConfig() {
       ...prev,
       [name]: value,
     }));
+    
+    // Update chatbot message when company name changes
+    if (name === 'companyName') {
+      setChatbotSettings(prev => ({
+        ...prev,
+        initialMessage: `Hello! I'm the ${value} AI assistant. How can I help you today?`
+      }));
+    }
   };
   
   const handleSettingChange = (name: string, value: string | boolean) => {
@@ -48,18 +117,81 @@ export default function ChatbotConfig() {
     }));
   };
   
+  const createChatbotMutation = useMutation({
+    mutationFn: async (data: any) => {
+      const response = await apiRequest("POST", "/api/chatbots", data);
+      return response.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Chatbot Approved",
+        description: "Your chatbot is now ready for deployment to your website.",
+      });
+      
+      setTimeout(() => {
+        setLocation("/dashboard?success=chatbot-created");
+      }, 1500);
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to create chatbot. Please try again.",
+        variant: "destructive"
+      });
+    }
+  });
+  
   const handleApprove = () => {
-    toast({
-      title: "Chatbot Approved",
-      description: "Your chatbot is now ready for deployment to your website.",
+    // Save company profile first
+    saveCompanyProfileMutation.mutate({
+      companyName: companyInfo.companyName,
+      industry: companyInfo.industry,
+      targetAudience: companyInfo.targetAudience,
+      brandVoice: companyInfo.brandVoice,
+      services: companyInfo.services,
+      valueProposition: companyInfo.valueProposition
     });
     
-    // In a real application, we would send this configuration to the backend
-    // and generate the necessary code for the user's website
-    setTimeout(() => {
-      setLocation("/dashboard?success=chatbot-created");
-    }, 1500);
+    // Then create/update chatbot
+    if (websitesQuery.data && Array.isArray(websitesQuery.data) && websitesQuery.data.length > 0) {
+      const website = websitesQuery.data[0];
+      createChatbotMutation.mutate({
+        websiteId: website.id,
+        name: `${companyInfo.companyName} Assistant`,
+        primaryColor: chatbotSettings.primaryColor,
+        position: chatbotSettings.position,
+        initialMessage: chatbotSettings.initialMessage,
+        collectEmail: chatbotSettings.collectEmail
+      });
+    } else {
+      toast({
+        title: "No website found",
+        description: "Please go back and add a website first.",
+        variant: "destructive"
+      });
+    }
   };
+  
+  // Mutation to save company profile
+  const saveCompanyProfileMutation = useMutation({
+    mutationFn: async (data: any) => {
+      // Check if we have an existing profile
+      if (companyProfileQuery.data) {
+        const response = await apiRequest("PUT", "/api/company/profile", data);
+        return response.json();
+      } else {
+        const response = await apiRequest("POST", "/api/company/profile", data);
+        return response.json();
+      }
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to save company profile. Please try again.",
+        variant: "destructive"
+      });
+    }
+  });
   
   const handleEdit = () => {
     setActiveTab("basic");
@@ -97,86 +229,95 @@ export default function ChatbotConfig() {
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="companyName">Company Name</Label>
-                    <Input 
-                      id="companyName" 
-                      name="companyName" 
-                      value={companyInfo.companyName} 
-                      onChange={handleCompanyInfoChange}
-                    />
+                {isLoading ? (
+                  <div className="flex flex-col items-center justify-center py-10">
+                    <Loader2 className="h-10 w-10 text-primary animate-spin mb-4" />
+                    <p className="text-muted-foreground">Loading company information from your website...</p>
                   </div>
-                  
-                  <div className="space-y-2">
-                    <Label htmlFor="industry">Industry</Label>
-                    <Select 
-                      defaultValue={companyInfo.industry}
-                      onValueChange={(value) => setCompanyInfo({...companyInfo, industry: value})}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select industry" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="Technology">Technology</SelectItem>
-                        <SelectItem value="E-commerce">E-commerce</SelectItem>
-                        <SelectItem value="Healthcare">Healthcare</SelectItem>
-                        <SelectItem value="Education">Education</SelectItem>
-                        <SelectItem value="Finance">Finance</SelectItem>
-                        <SelectItem value="Real Estate">Real Estate</SelectItem>
-                        <SelectItem value="Travel">Travel</SelectItem>
-                        <SelectItem value="Other">Other</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="targetAudience">Target Audience</Label>
-                  <Textarea 
-                    id="targetAudience" 
-                    name="targetAudience" 
-                    value={companyInfo.targetAudience} 
-                    onChange={handleCompanyInfoChange}
-                  />
-                </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="brandVoice">Brand Voice</Label>
-                  <Textarea 
-                    id="brandVoice" 
-                    name="brandVoice" 
-                    value={companyInfo.brandVoice} 
-                    onChange={handleCompanyInfoChange}
-                    placeholder="Describe how your brand communicates (e.g., friendly, professional, casual)"
-                  />
-                </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="services">Services/Products</Label>
-                  <Textarea 
-                    id="services" 
-                    name="services" 
-                    value={companyInfo.services} 
-                    onChange={handleCompanyInfoChange}
-                    placeholder="Describe what your company offers to customers"
-                  />
-                </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="valueProposition">Value Proposition</Label>
-                  <Textarea 
-                    id="valueProposition" 
-                    name="valueProposition" 
-                    value={companyInfo.valueProposition} 
-                    onChange={handleCompanyInfoChange}
-                    placeholder="What makes your company unique and why should customers choose you?"
-                  />
-                </div>
-                
-                <Button onClick={() => setActiveTab("appearance")} className="w-full md:w-auto">
-                  Continue to Appearance
-                </Button>
+                ) : (
+                  <>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="companyName">Company Name</Label>
+                        <Input 
+                          id="companyName" 
+                          name="companyName" 
+                          value={companyInfo.companyName} 
+                          onChange={handleCompanyInfoChange}
+                        />
+                      </div>
+                      
+                      <div className="space-y-2">
+                        <Label htmlFor="industry">Industry</Label>
+                        <Select 
+                          value={companyInfo.industry}
+                          onValueChange={(value) => setCompanyInfo({...companyInfo, industry: value})}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select industry" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="Technology">Technology</SelectItem>
+                            <SelectItem value="E-commerce">E-commerce</SelectItem>
+                            <SelectItem value="Healthcare">Healthcare</SelectItem>
+                            <SelectItem value="Education">Education</SelectItem>
+                            <SelectItem value="Finance">Finance</SelectItem>
+                            <SelectItem value="Real Estate">Real Estate</SelectItem>
+                            <SelectItem value="Travel">Travel</SelectItem>
+                            <SelectItem value="Other">Other</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <Label htmlFor="targetAudience">Target Audience</Label>
+                      <Textarea 
+                        id="targetAudience" 
+                        name="targetAudience" 
+                        value={companyInfo.targetAudience} 
+                        onChange={handleCompanyInfoChange}
+                      />
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <Label htmlFor="brandVoice">Brand Voice</Label>
+                      <Textarea 
+                        id="brandVoice" 
+                        name="brandVoice" 
+                        value={companyInfo.brandVoice} 
+                        onChange={handleCompanyInfoChange}
+                        placeholder="Describe how your brand communicates (e.g., friendly, professional, casual)"
+                      />
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <Label htmlFor="services">Services/Products</Label>
+                      <Textarea 
+                        id="services" 
+                        name="services" 
+                        value={companyInfo.services} 
+                        onChange={handleCompanyInfoChange}
+                        placeholder="Describe what your company offers to customers"
+                      />
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <Label htmlFor="valueProposition">Value Proposition</Label>
+                      <Textarea 
+                        id="valueProposition" 
+                        name="valueProposition" 
+                        value={companyInfo.valueProposition} 
+                        onChange={handleCompanyInfoChange}
+                        placeholder="What makes your company unique and why should customers choose you?"
+                      />
+                    </div>
+                    
+                    <Button onClick={() => setActiveTab("appearance")} className="w-full md:w-auto">
+                      Continue to Appearance
+                    </Button>
+                  </>
+                )}
               </CardContent>
             </Card>
           </TabsContent>
