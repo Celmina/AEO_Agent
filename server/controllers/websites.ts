@@ -41,8 +41,19 @@ function extractDomainName(url: string): string {
 export async function getWebsites(req: Request, res: Response) {
   try {
     const userId = (req.user as any).id;
-    const websites = await storage.getWebsites(userId);
-    return res.json(websites);
+    
+    // Use direct database query to ensure we get all fields
+    const websites = await db.query.websites.findMany({
+      where: eq(websites.userId, userId)
+    });
+    
+    // Format websites to make scraped_content backward compatible with scrapedContent
+    const formattedWebsites = websites.map(website => ({
+      ...website,
+      scraped_content: website.scrapedContent // Add this for backward compatibility
+    }));
+    
+    return res.json(formattedWebsites);
   } catch (error) {
     console.error("Error fetching websites:", error);
     return res.status(500).json({ message: "Internal server error" });
