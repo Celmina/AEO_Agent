@@ -85,28 +85,9 @@ export default function CompanySetup() {
             if (!profile) {
               form.setValue("companyName", website.name || "");
               
-              // Map industry from scraped data
+              // Set industry directly from scraped data (already normalized to match dropdown)
               if (parsedContent.industry) {
-                const industryMap: Record<string, string> = {
-                  "ecommerce": "ecommerce",
-                  "e-commerce": "ecommerce",
-                  "software": "saas",
-                  "saas": "saas",
-                  "healthcare": "healthcare",
-                  "finance": "finance",
-                  "education": "education",
-                  "retail": "retail",
-                  "manufacturing": "manufacturing"
-                };
-                
-                // Try to find matching industry or default to "other"
-                const lowercaseIndustry = String(parsedContent.industry).toLowerCase();
-                for (const [key, value] of Object.entries(industryMap)) {
-                  if (lowercaseIndustry.includes(key)) {
-                    form.setValue("industry", value);
-                    break;
-                  }
-                }
+                form.setValue("industry", String(parsedContent.industry));
               }
               
               // Set other values if they exist

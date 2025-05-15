@@ -471,28 +471,52 @@ function extractTargetAudience(content: ScrapedContent): string {
 function extractBrandVoice(content: ScrapedContent): string {
   const combinedText = content.mainContent.toLowerCase();
   
-  // Determine tone based on content
-  if (combinedText.includes('innovative') || combinedText.includes('cutting-edge') || 
-      combinedText.includes('breakthrough') || combinedText.includes('revolutionary')) {
-    return 'Innovative and Forward-thinking';
+  // Map to match form dropdown values in CompanySetup.tsx
+  const voiceMapping = [
+    { 
+      keywords: ['innovative', 'cutting-edge', 'breakthrough', 'revolutionary', 'future', 'advanced', 'tech', 'new', 'modern'],
+      value: 'innovative'
+    },
+    { 
+      keywords: ['friendly', 'welcoming', 'warm', 'supportive', 'care', 'help', 'assist', 'kind', 'thoughtful'],
+      value: 'friendly'
+    },
+    { 
+      keywords: ['expert', 'professional', 'experienced', 'specialist', 'leader', 'knowledge', 'skill', 'proficient', 'qualified', 'authority', 'trusted', 'leading'],
+      value: 'expert'
+    },
+    { 
+      keywords: ['luxury', 'premium', 'exclusive', 'sophisticated', 'high-end', 'elite', 'upscale', 'elegant', 'refined'],
+      value: 'luxury'
+    },
+    { 
+      keywords: ['fun', 'playful', 'exciting', 'creative', 'entertaining', 'enjoyable', 'amusing', 'light-hearted', 'casual'],
+      value: 'fun'
+    },
+    { 
+      keywords: ['simple', 'straightforward', 'clear', 'easy', 'minimal', 'direct', 'plain', 'uncomplicated', 'no-frills'],
+      value: 'minimalist'
+    },
+    { 
+      keywords: ['trustworthy', 'reliable', 'secure', 'dependable', 'stable', 'honest', 'integrity', 'consistent', 'proven'],
+      value: 'trustworthy'
+    },
+    { 
+      keywords: ['bold', 'strong', 'confident', 'powerful', 'assertive', 'brave', 'daring', 'decisive', 'firm'],
+      value: 'bold'
+    }
+  ];
+  
+  for (const voice of voiceMapping) {
+    for (const keyword of voice.keywords) {
+      if (combinedText.includes(keyword)) {
+        return voice.value;
+      }
+    }
   }
   
-  if (combinedText.includes('friendly') || combinedText.includes('welcoming') || 
-      combinedText.includes('warm') || combinedText.includes('supportive')) {
-    return 'Friendly and Supportive';
-  }
-  
-  if (combinedText.includes('luxury') || combinedText.includes('premium') || 
-      combinedText.includes('exclusive') || combinedText.includes('sophisticated')) {
-    return 'Premium and Sophisticated';
-  }
-  
-  if (combinedText.includes('expert') || combinedText.includes('authority') || 
-      combinedText.includes('trusted') || combinedText.includes('leading')) {
-    return 'Authoritative and Expert';
-  }
-  
-  return 'Professional';
+  // Default to professional
+  return 'professional';
 }
 
 function extractServices(content: ScrapedContent): string {
