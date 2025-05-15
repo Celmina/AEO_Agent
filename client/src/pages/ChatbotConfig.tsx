@@ -250,9 +250,55 @@ export default function ChatbotConfig() {
     });
   };
   
+  // Handle approving a chatbot
+  const handleApprovePendingChatbot = () => {
+    if (pendingChatbot) {
+      approveChatbotMutation.mutate(pendingChatbot.id);
+    }
+  };
+
   return (
     <DashboardLayout>
       <div className="p-6 space-y-6">
+        {/* Success Alert */}
+        {showSuccessAlert && (
+          <Alert className="bg-green-50 border-green-100">
+            <CheckCircle className="h-4 w-4 text-green-800" />
+            <AlertTitle className="text-green-800">Chatbot Approved</AlertTitle>
+            <AlertDescription className="text-green-700">
+              Your chatbot has been approved and is now active. You can now install the chatbot on your website.
+            </AlertDescription>
+          </Alert>
+        )}
+        
+        {/* Pending Chatbot Approval Section - only show if we have a pending chatbot */}
+        {pendingChatbot && (
+          <Alert className="bg-blue-50 border-blue-100">
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center w-full">
+              <div className="flex-1">
+                <AlertTitle className="text-blue-800">Chatbot Pending Approval</AlertTitle>
+                <AlertDescription className="text-blue-700">
+                  You have a chatbot configuration waiting for your approval. Review it in the preview below and approve it to make it active.
+                </AlertDescription>
+              </div>
+              <Button 
+                className="mt-2 md:mt-0 bg-blue-600 hover:bg-blue-700" 
+                onClick={handleApprovePendingChatbot}
+                disabled={approveChatbotMutation.isPending}
+              >
+                {approveChatbotMutation.isPending ? (
+                  <>
+                    <span className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent"></span>
+                    Approving...
+                  </>
+                ) : (
+                  <>Approve Chatbot</>
+                )}
+              </Button>
+            </div>
+          </Alert>
+        )}
+      
         <div className="flex justify-between items-center">
           <div>
             <h1 className="text-2xl font-bold tracking-tight">Chatbot Configuration</h1>
