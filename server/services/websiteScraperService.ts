@@ -410,23 +410,34 @@ function extractCompanyName(content: ScrapedContent): string {
 
 function extractIndustry(content: ScrapedContent): string {
   const combinedText = content.aboutContent + ' ' + content.mainContent;
+  const lowercasedText = combinedText.toLowerCase();
   
-  // Look for industry-related keywords
-  const industryKeywords = [
-    'ecommerce', 'e-commerce', 'retail', 'technology', 'healthcare', 'education',
-    'finance', 'banking', 'insurance', 'real estate', 'construction', 'manufacturing',
-    'hospitality', 'tourism', 'food', 'restaurant', 'legal', 'consulting', 'marketing',
-    'advertising', 'media', 'entertainment', 'automotive', 'transportation', 'energy',
-    'software', 'IT', 'fashion', 'beauty', 'fitness', 'sports', 'art', 'design'
+  // Map to match form dropdown values in CompanySetup.tsx
+  const industryMapping = [
+    { keywords: ['ecommerce', 'e-commerce', 'online store', 'shop', 'shopping', 'webshop'], value: 'ecommerce' },
+    { keywords: ['software', 'saas', 'cloud', 'subscription', 'platform', 'application'], value: 'saas' },
+    { keywords: ['healthcare', 'medical', 'hospital', 'doctor', 'clinic', 'patient', 'health'], value: 'healthcare' },
+    { keywords: ['finance', 'banking', 'loan', 'credit', 'investment', 'financial'], value: 'finance' },
+    { keywords: ['education', 'school', 'university', 'college', 'course', 'teaching', 'learning'], value: 'education' },
+    { keywords: ['retail', 'store', 'shop', 'mall', 'outlet'], value: 'retail' },
+    { keywords: ['manufacturing', 'factory', 'production', 'industry'], value: 'manufacturing' },
+    { keywords: ['real estate', 'property', 'house', 'apartment', 'building', 'construction'], value: 'real_estate' },
+    { keywords: ['travel', 'tourism', 'hotel', 'vacation', 'booking'], value: 'travel' },
+    { keywords: ['food', 'restaurant', 'catering', 'meal', 'dine'], value: 'food' },
+    { keywords: ['technology', 'tech', 'IT', 'computer', 'digital'], value: 'technology' },
+    { keywords: ['media', 'news', 'entertainment', 'publishing'], value: 'media' },
+    { keywords: ['professional', 'services', 'consulting', 'agency', 'consultant'], value: 'professional_services' }
   ];
   
-  for (const keyword of industryKeywords) {
-    if (combinedText.toLowerCase().includes(keyword)) {
-      return keyword.charAt(0).toUpperCase() + keyword.slice(1);
+  for (const industry of industryMapping) {
+    for (const keyword of industry.keywords) {
+      if (lowercasedText.includes(keyword)) {
+        return industry.value;
+      }
     }
   }
   
-  return 'Not specified';
+  return 'other';
 }
 
 function extractTargetAudience(content: ScrapedContent): string {

@@ -61,16 +61,22 @@ export default function CompanySetup() {
   useEffect(() => {
     if (websites && Array.isArray(websites) && websites.length > 0) {
       const website = websites[0]; // Get first website
-      if (website && website.scrapedContent) {
+      
+      // Check for either scrapedContent or scraped_content (for backward compatibility)
+      const content = website?.scrapedContent || website?.scraped_content;
+      
+      if (website && content) {
         try {
           let parsedContent: Record<string, any> = {};
           
           // Handle different data types
-          if (typeof website.scrapedContent === 'string') {
-            parsedContent = JSON.parse(website.scrapedContent);
-          } else if (typeof website.scrapedContent === 'object') {
-            parsedContent = website.scrapedContent as Record<string, any>;
+          if (typeof content === 'string') {
+            parsedContent = JSON.parse(content);
+          } else if (typeof content === 'object') {
+            parsedContent = content as Record<string, any>;
           }
+          
+          console.log("Scraped data found:", parsedContent);
           
           if (Object.keys(parsedContent).length > 0) {
             setScrapedData(parsedContent);
