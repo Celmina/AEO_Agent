@@ -11,16 +11,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
-import { Loader2, CheckCircle, AlertCircle } from "lucide-react";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Loader2 } from "lucide-react";
 
 export default function ChatbotConfig() {
   const { toast } = useToast();
   const [, setLocation] = useLocation();
-  const queryClient = useQueryClient();
-  const [showSuccessAlert, setShowSuccessAlert] = useState(false);
   const [activeTab, setActiveTab] = useState("basic");
   const [isLoading, setIsLoading] = useState(true);
   const [companyInfo, setCompanyInfo] = useState({
@@ -30,7 +27,6 @@ export default function ChatbotConfig() {
     brandVoice: "Professional, friendly, and helpful",
     services: "",
     valueProposition: "",
-    companyGuidelines: "",
   });
   
   const [chatbotSettings, setChatbotSettings] = useState({
@@ -83,7 +79,6 @@ export default function ChatbotConfig() {
         brandVoice: data.brandVoice || companyInfo.brandVoice,
         services: data.services || companyInfo.services,
         valueProposition: data.valueProposition || companyInfo.valueProposition,
-        companyGuidelines: data.additionalInfo || companyInfo.companyGuidelines,
       });
       
       // Update chatbot initial message with company name
@@ -122,20 +117,6 @@ export default function ChatbotConfig() {
     }));
   };
   
-  // Query existing chatbots
-  const chatbotsQuery = useQuery({
-    queryKey: ["/api/chatbots"]
-  });
-  
-  // Find any pending chatbots
-  const pendingChatbots = chatbotsQuery.data 
-    ? (chatbotsQuery.data as any[]).filter(chatbot => chatbot.status === 'pending') 
-    : [];
-    
-  // Get the first pending chatbot if there is one
-  const pendingChatbot = pendingChatbots.length > 0 ? pendingChatbots[0] : null;
-  
-  // Mutations
   const createChatbotMutation = useMutation({
     mutationFn: async (data: any) => {
       const response = await apiRequest("POST", "/api/chatbots", data);
@@ -143,47 +124,18 @@ export default function ChatbotConfig() {
     },
     onSuccess: () => {
       toast({
-        title: "Chatbot Configuration Submitted",
-        description: "Your chatbot configuration is pending approval.",
+        title: "Chatbot Approved",
+        description: "Your chatbot is now ready for deployment to your website.",
       });
       
       setTimeout(() => {
-        setLocation("/dashboard?status=pending-approval");
+        setLocation("/dashboard?success=chatbot-created");
       }, 1500);
     },
     onError: () => {
       toast({
         title: "Error",
         description: "Failed to create chatbot. Please try again.",
-        variant: "destructive"
-      });
-    }
-  });
-  
-  // Mutation to approve a chatbot
-  const approveChatbotMutation = useMutation({
-    mutationFn: async (chatbotId: number) => {
-      const response = await apiRequest("POST", `/api/chatbots/${chatbotId}/approve`);
-      return response.json();
-    },
-    onSuccess: () => {
-      toast({
-        title: "Chatbot Approved",
-        description: "Your chatbot is now active and ready for deployment.",
-      });
-      // Invalidate chatbots query to refetch with updated data
-      queryClient.invalidateQueries({ queryKey: ["/api/chatbots"] });
-      // Show success alert
-      setShowSuccessAlert(true);
-      setTimeout(() => {
-        setShowSuccessAlert(false);
-        setLocation("/dashboard?success=chatbot-approved");
-      }, 2000);
-    },
-    onError: () => {
-      toast({
-        title: "Error",
-        description: "Failed to approve chatbot. Please try again.",
         variant: "destructive"
       });
     }
@@ -197,8 +149,7 @@ export default function ChatbotConfig() {
       targetAudience: companyInfo.targetAudience,
       brandVoice: companyInfo.brandVoice,
       services: companyInfo.services,
-      valueProposition: companyInfo.valueProposition,
-      additionalInfo: companyInfo.companyGuidelines // Store guidelines in additionalInfo field
+      valueProposition: companyInfo.valueProposition
     });
     
     // Then create/update chatbot
@@ -210,10 +161,7 @@ export default function ChatbotConfig() {
         primaryColor: chatbotSettings.primaryColor,
         position: chatbotSettings.position,
         initialMessage: chatbotSettings.initialMessage,
-        collectEmail: chatbotSettings.collectEmail,
-        configuration: JSON.stringify({
-          companyGuidelines: companyInfo.companyGuidelines
-        })
+        collectEmail: chatbotSettings.collectEmail
       });
     } else {
       toast({
@@ -253,58 +201,9 @@ export default function ChatbotConfig() {
     });
   };
   
-  // Variable to check if we have pending chatbots
-  const hasPendingChatbots = pendingChatbots.length > 0;
-  
-  // Handle approving a chatbot
-  const handleApprovePendingChatbot = () => {
-    if (pendingChatbot) {
-      approveChatbotMutation.mutate(pendingChatbot.id);
-    }
-  };
-
   return (
     <DashboardLayout>
       <div className="p-6 space-y-6">
-        {/* Success Alert */}
-        {showSuccessAlert && (
-          <Alert className="bg-green-50 border-green-100">
-            <CheckCircle className="h-4 w-4 text-green-800" />
-            <AlertTitle className="text-green-800">Chatbot Approved</AlertTitle>
-            <AlertDescription className="text-green-700">
-              Your chatbot has been approved and is now active. You can now install the chatbot on your website.
-            </AlertDescription>
-          </Alert>
-        )}
-        
-        {/* Pending Chatbot Approval Section - only show if we have a pending chatbot */}
-        {hasPendingChatbots && (
-          <Alert className="bg-blue-50 border-blue-100">
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center w-full">
-              <div className="flex-1">
-                <AlertTitle className="text-blue-800">Chatbot Pending Approval</AlertTitle>
-                <AlertDescription className="text-blue-700">
-                  You have a chatbot configuration waiting for your approval. Review it in the preview below and approve it to make it active.
-                </AlertDescription>
-              </div>
-              <Button 
-                className="mt-2 md:mt-0 bg-blue-600 hover:bg-blue-700" 
-                onClick={handleApprovePendingChatbot}
-                disabled={approveChatbotMutation.isPending}
-              >
-                {approveChatbotMutation.isPending ? (
-                  <>
-                    <span className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent"></span>
-                    Approving...
-                  </>
-                ) : (
-                  <>Approve Chatbot</>
-                )}
-              </Button>
-            </div>
-          </Alert>
-        )}
-      
         <div className="flex justify-between items-center">
           <div>
             <h1 className="text-2xl font-bold tracking-tight">Chatbot Configuration</h1>
@@ -412,21 +311,6 @@ export default function ChatbotConfig() {
                         onChange={handleCompanyInfoChange}
                         placeholder="What makes your company unique and why should customers choose you?"
                       />
-                    </div>
-                    
-                    <div className="space-y-2">
-                      <Label htmlFor="companyGuidelines">Company Guidelines/Additional Information</Label>
-                      <Textarea 
-                        id="companyGuidelines" 
-                        name="companyGuidelines" 
-                        rows={5}
-                        placeholder="Add any additional information, guidelines, or specific details about your company that the chatbot should know. This will improve the accuracy of responses."
-                        onChange={(e) => setCompanyInfo({...companyInfo, companyGuidelines: e.target.value})}
-                        value={companyInfo.companyGuidelines || ''}
-                      />
-                      <p className="text-xs text-muted-foreground">
-                        This information will be used to train the AI about your company. Be as detailed as possible.
-                      </p>
                     </div>
                     
                     <Button onClick={() => setActiveTab("appearance")} className="w-full md:w-auto">

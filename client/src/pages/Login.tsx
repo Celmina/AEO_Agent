@@ -63,9 +63,9 @@ export default function Login() {
           <div className="flex justify-between items-center">
             <CardTitle className="text-2xl font-bold">Log in to your account</CardTitle>
             <Link href="/">
-              <span className="text-primary hover:text-primary/80 cursor-pointer">
+              <a className="text-primary hover:text-primary/80">
                 <i className="fas fa-home"></i>
-              </span>
+              </a>
             </Link>
           </div>
           <CardDescription>
@@ -101,9 +101,9 @@ export default function Login() {
                     <div className="flex items-center justify-between">
                       <FormLabel>Password</FormLabel>
                       <Link href="/forgot-password">
-                        <span className="text-sm font-medium text-primary hover:text-primary/80 cursor-pointer">
+                        <a className="text-sm font-medium text-primary hover:text-primary/80">
                           Forgot password?
-                        </span>
+                        </a>
                       </Link>
                     </div>
                     <FormControl>
@@ -173,9 +173,9 @@ export default function Login() {
           <p className="text-center text-sm text-gray-600">
             Don't have an account?{" "}
             <Link href="/signup">
-              <span className="font-medium text-primary hover:text-primary/80 cursor-pointer">
+              <a className="font-medium text-primary hover:text-primary/80">
                 Sign up
-              </span>
+              </a>
             </Link>
           </p>
         </CardFooter>

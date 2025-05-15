@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 import { storage } from "../storage";
-import { insertWebsiteSchema, chatbots, websites } from "@shared/schema";
+import { insertWebsiteSchema, chatbots } from "@shared/schema";
 import { randomBytes } from "crypto";
 import { z, ZodError } from "zod";
 import { db, pool } from "../db";
@@ -41,17 +41,8 @@ function extractDomainName(url: string): string {
 export async function getWebsites(req: Request, res: Response) {
   try {
     const userId = (req.user as any).id;
-    
-    // Use direct database query to ensure we get all fields
-    const result = await db.select().from(websites).where(eq(websites.userId, userId));
-    
-    // Format websites to make scraped_content backward compatible with scrapedContent
-    const formattedWebsites = result.map(website => ({
-      ...website,
-      scraped_content: website.scrapedContent // Add this for backward compatibility
-    }));
-    
-    return res.json(formattedWebsites);
+    const websites = await storage.getWebsites(userId);
+    return res.json(websites);
   } catch (error) {
     console.error("Error fetching websites:", error);
     return res.status(500).json({ message: "Internal server error" });
@@ -120,84 +111,9 @@ export async function createWebsite(req: Request, res: Response) {
         WHERE id = $2
       `, ['scraping', website.id]);
       
-      // Run scraper in the background (don't await) - add a larger delay to ensure DB operations complete
+      // Run scraper in the background (don't await)
       setTimeout(async () => {
         try {
-          // First verify the website exists in the database
-          const checkResult = await pool.query(`
-            SELECT id FROM websites WHERE id = $1
-          `, [website.id]);
-          
-          if (!checkResult.rows || checkResult.rows.length === 0) {
-            log(`Website record not yet available in database, retrying in 3s...`, 'website');
-            // Try again with a longer delay if the website record isn't ready
-            setTimeout(async () => {
-              try {
-                // Verify website still exists
-                const recheckResult = await pool.query(`
-                  SELECT id FROM websites WHERE id = $1
-                `, [website.id]);
-                
-                if (!recheckResult.rows || recheckResult.rows.length === 0) {
-                  log(`Website still not found, last retry in 5s...`, 'website');
-                  // Final retry with even longer delay
-                  setTimeout(async () => {
-                    try {
-                      const result = await scrapeWebsite(websiteData.domain, website.id);
-                      
-                      // Update the website status after scraping completes
-                      if (result) {
-                        await pool.query(`
-                          UPDATE websites 
-                          SET status = $1
-                          WHERE id = $2
-                        `, ['active', website.id]);
-                        
-                        log(`Successfully scraped website: ${websiteData.domain}`, 'website');
-                      } else {
-                        await pool.query(`
-                          UPDATE websites 
-                          SET status = $1
-                          WHERE id = $2
-                        `, ['error', website.id]);
-                        
-                        log(`Failed to scrape website: ${websiteData.domain}`, 'error');
-                      }
-                    } catch (finalRetryError) {
-                      log(`Error in final retry scraping: ${finalRetryError}`, 'error');
-                    }
-                  }, 5000);
-                  return;
-                }
-                
-                const result = await scrapeWebsite(websiteData.domain, website.id);
-                
-                // Update the website status after scraping completes
-                if (result) {
-                  await pool.query(`
-                    UPDATE websites 
-                    SET status = $1
-                    WHERE id = $2
-                  `, ['active', website.id]);
-                  
-                  log(`Successfully scraped website: ${websiteData.domain}`, 'website');
-                } else {
-                  await pool.query(`
-                    UPDATE websites 
-                    SET status = $1
-                    WHERE id = $2
-                  `, ['error', website.id]);
-                  
-                  log(`Failed to scrape website: ${websiteData.domain}`, 'error');
-                }
-              } catch (retryError) {
-                log(`Error in retry scraping: ${retryError}`, 'error');
-              }
-            }, 3000);
-            return;
-          }
-          
-          // If we get here, the website record is available
           const result = await scrapeWebsite(websiteData.domain, website.id);
           
           // Update the website status after scraping completes
@@ -228,140 +144,49 @@ export async function createWebsite(req: Request, res: Response) {
           
           log(`Error in background scraping: ${e}`, 'error');
         }
-      }, 2000);
+      }, 100);
     } catch (scraperError) {
       log(`Error initiating website scraper: ${scraperError}`, 'error');
       // Continue anyway - scraping failure shouldn't block website creation
     }
     
-    // Helper function to create the default chatbot with improved reliability
-    const createDefaultChatbot = async (
-      websiteData: any, 
-      userId: number, 
-      websiteId: number
-    ) => {
-      try {
-        // First check if a chatbot already exists for this website
-        const existingChatbotQuery = `
-          SELECT id FROM chatbots WHERE website_id = $1
-        `;
-        const existingResult = await pool.query(existingChatbotQuery, [websiteId]);
+    // Auto-create a default chatbot for this website
+    try {
+      // Create chatbot with dynamic info based on website name
+      const siteName = websiteData.name || extractDomainName(websiteData.domain);
+      const initialMessage = `Hello! How can I help you with information about ${siteName}?`;
+      
+      // After website creation, set up the default chatbot
+      // Use the raw pool query to ensure it works consistently
+      const query = `
+        INSERT INTO chatbots 
+        (name, user_id, website_id, initial_message, primary_color, position, collect_email, status, created_at, updated_at)
+        VALUES 
+        ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+        RETURNING id`;
         
-        if (existingResult.rows && existingResult.rows.length > 0) {
-          log(`Chatbot already exists for website ${websiteId}`, 'website');
-          return;
-        }
-        
-        // Create chatbot with dynamic info based on website name
-        const siteName = websiteData.name || extractDomainName(websiteData.domain);
-        const initialMessage = `Hello! How can I help you with information about ${siteName}?`;
-        
-        // Double-check that the website exists before trying to create a chatbot
-        const websiteCheckQuery = `
-          SELECT id FROM websites WHERE id = $1
-        `;
-        const websiteCheck = await pool.query(websiteCheckQuery, [websiteId]);
-        
-        if (!websiteCheck.rows || websiteCheck.rows.length === 0) {
-          log(`Website with ID ${websiteId} not found in first check, re-checking in 2s...`, 'website');
-          
-          // Wait and try again
-          await new Promise(resolve => setTimeout(resolve, 2000));
-          
-          const retryCheck = await pool.query(websiteCheckQuery, [websiteId]);
-          if (!retryCheck.rows || retryCheck.rows.length === 0) {
-            log(`Website with ID ${websiteId} still not found after retry, aborting chatbot creation`, 'error');
-            return;
-          }
-          
-          log(`Website found in retry check, proceeding with chatbot creation`, 'website');
-        }
-        
-        // After verifying website exists, set up the default chatbot
-        try {
-          // Use the raw pool query to ensure it works consistently
-          const query = `
-            INSERT INTO chatbots 
-            (name, user_id, website_id, initial_message, primary_color, position, collect_email, status, created_at, updated_at)
-            VALUES 
-            ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-            RETURNING id`;
-            
-          const values = [
-            `${siteName} Assistant`,
-            userId,
-            websiteId,
-            initialMessage,
-            "#4f46e5",  // Default primary color
-            "bottom-right", // Default position
-            true,       // Default to collecting emails
-            "active",   // Set as active by default
-            new Date(),
-            new Date()
-          ];
-          
-          // Execute direct query to avoid ORM-specific issues
-          const result = await pool.query(query, values);
-          
-          if (result.rows && result.rows.length > 0) {
-            log(`Successfully created chatbot ID ${result.rows[0].id} for website ${websiteId}`, 'website');
-          } else {
-            log(`Chatbot creation completed but no ID returned for website ${websiteId}`, 'website');
-          }
-        } catch (insertError: any) {
-          // Check if this is a foreign key constraint error
-          if (insertError.message && insertError.message.includes('foreign key constraint')) {
-            log(`Foreign key constraint error when creating chatbot, website ${websiteId} may not exist yet`, 'error');
-          } else {
-            log(`Error inserting chatbot for website ${websiteId}: ${insertError}`, 'error');
-          }
-        }
-      } catch (error) {
-        log(`Error in createDefaultChatbot for website ${websiteId}: ${error}`, 'error');
-      }
-    };
-    
-    // Auto-create a default chatbot for this website (with a longer delay to ensure website record exists)
-    setTimeout(async () => {
-      try {
-        // Check if website exists
-        const checkWebsite = await pool.query(`
-          SELECT id FROM websites WHERE id = $1
-        `, [website.id]);
-        
-        if (!checkWebsite.rows || checkWebsite.rows.length === 0) {
-          log(`Website record not ready for chatbot creation, trying again in 3s...`, 'website');
-          // Try again with a much longer delay
-          setTimeout(async () => {
-            try {
-              // Check again if website exists
-              const retryWebsiteCheck = await pool.query(`
-                SELECT id FROM websites WHERE id = $1
-              `, [website.id]);
-              
-              if (!retryWebsiteCheck.rows || retryWebsiteCheck.rows.length === 0) {
-                log(`Website still not found after retry, attempting final retry in 5s...`, 'website');
-                // Final retry with an even longer delay
-                setTimeout(async () => {
-                  await createDefaultChatbot(websiteData, userId, website.id);
-                }, 5000);
-                return;
-              }
-              
-              await createDefaultChatbot(websiteData, userId, website.id);
-            } catch (retryError) {
-              log(`Error in retry chatbot creation: ${retryError}`, 'error');
-            }
-          }, 3000);
-          return;
-        }
-        
-        // Website exists, create the chatbot
-        await createDefaultChatbot(websiteData, userId, website.id);
-      } catch (chatbotError) {
-        log(`Error creating default chatbot: ${chatbotError}`, 'error');
-      }
-    }, 2000);
+      const values = [
+        `${siteName} Assistant`,
+        userId,
+        website.id,
+        initialMessage,
+        "#4f46e5",  // Default primary color
+        "bottom-right", // Default position
+        true,       // Default to collecting emails
+        "active",   // Set as active by default
+        new Date(),
+        new Date()
+      ];
+      
+      // Execute direct query to avoid ORM-specific issues
+      const result = await pool.query(query, values);
+      
+      log(`Automatically created chatbot for website ${website.id}`, 'website');
+    } catch (chatbotError) {
+      log(`Error creating default chatbot: ${chatbotError}`, 'error');
+      // We don't fail the request if chatbot creation fails
+      // The user can still create a chatbot manually
+    }
     
     return res.status(201).json(website);
   } catch (error) {

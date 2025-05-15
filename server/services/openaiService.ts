@@ -25,41 +25,11 @@ export async function generateAIResponse(question: string, context: string): Pro
     throw new Error("Missing OPENAI_API_KEY");
   }
 
-  // Parse the context to extract company guidelines if provided
-  let parsedContext: any = {};
-  try {
-    if (context.includes('{') && context.includes('}')) {
-      // Extract JSON from context if it exists
-      const jsonStart = context.indexOf('{');
-      const jsonEnd = context.lastIndexOf('}') + 1;
-      const jsonStr = context.substring(jsonStart, jsonEnd);
-      parsedContext = JSON.parse(jsonStr);
-    }
-  } catch (e) {
-    log(`Error parsing context JSON: ${e}`, 'error');
-  }
-
-  // Extract company guidelines if they exist
-  const companyGuidelines = parsedContext.companyGuidelines || '';
-  
-  // Clean up context for the prompt (remove JSON if it was included)
-  let cleanContext = context;
-  if (parsedContext.companyGuidelines) {
-    // Remove the JSON part from the context
-    const jsonStart = context.indexOf('{');
-    const jsonEnd = context.lastIndexOf('}') + 1;
-    cleanContext = context.substring(0, jsonStart) + context.substring(jsonEnd);
-  }
-  
-  // Create system prompt with guidelines included
   const systemPrompt = `You are an AI assistant specifically designed to help website visitors with questions about the following company and website:
   
-${cleanContext}
+${context}
 
-${companyGuidelines ? `COMPANY GUIDELINES AND ADDITIONAL INFORMATION:
-${companyGuidelines}
-
-` : ''}IMPORTANT RULES:
+IMPORTANT RULES:
 1. ONLY answer questions about this specific company/website based on the context provided.
 2. If asked about ecom.ai or any other companies, politely explain you're here to assist with questions about THIS company/website only.
 3. Respond in a helpful, professional manner that matches the company's brand voice.

@@ -76,8 +76,10 @@ export default function Signup() {
         <CardHeader className="space-y-1">
           <div className="flex justify-between items-center">
             <CardTitle className="text-2xl font-bold">Create your account</CardTitle>
-            <Link href="/" className="text-primary hover:text-primary/80">
-              <i className="fas fa-home"></i>
+            <Link href="/">
+              <a className="text-primary hover:text-primary/80">
+                <i className="fas fa-home"></i>
+              </a>
             </Link>
           </div>
           <CardDescription>
@@ -242,8 +244,10 @@ export default function Signup() {
         <CardFooter className="flex justify-center">
           <p className="text-center text-sm text-gray-600">
             Already have an account?{" "}
-            <Link href="/login" className="font-medium text-primary hover:text-primary/80">
-              Log in
+            <Link href="/login">
+              <a className="font-medium text-primary hover:text-primary/80">
+                Log in
+              </a>
             </Link>
           </p>
         </CardFooter>

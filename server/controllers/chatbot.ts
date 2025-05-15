@@ -124,13 +124,12 @@ export async function createChatbot(req: Request, res: Response) {
       return res.status(400).json({ message: 'A chatbot already exists for this website' });
     }
 
-    // Create new chatbot with pending status
+    // Create new chatbot
     const [newChatbot] = await db.insert(chatbots)
       .values({
         ...chatbotData,
         websiteId,
-        userId: userId,
-        status: 'pending' // Set initial status to pending
+        userId: userId
       })
       .returning();
 
@@ -138,53 +137,6 @@ export async function createChatbot(req: Request, res: Response) {
   } catch (error) {
     log(`Error creating chatbot: ${error}`, 'error');
     return res.status(500).json({ message: 'Failed to create chatbot', error: String(error) });
-  }
-}
-
-/**
- * Approve a chatbot
- */
-export async function approveChatbot(req: Request, res: Response) {
-  try {
-    if (!req.user) {
-      return res.status(401).json({ message: 'Not authenticated' });
-    }
-
-    const userId = (req.user as any).id;
-    const chatbotId = parseInt(req.params.id);
-    
-    if (isNaN(chatbotId)) {
-      return res.status(400).json({ message: 'Invalid chatbot ID' });
-    }
-    
-    // Find the chatbot
-    const chatbot = await db.query.chatbots.findFirst({
-      where: and(
-        eq(chatbots.id, chatbotId),
-        eq(chatbots.userId, userId)
-      )
-    });
-    
-    if (!chatbot) {
-      return res.status(404).json({ message: 'Chatbot not found or not owned by you' });
-    }
-    
-    // Update the chatbot status to active
-    const [updatedChatbot] = await db.update(chatbots)
-      .set({
-        status: 'active',
-        updatedAt: new Date()
-      })
-      .where(eq(chatbots.id, chatbotId))
-      .returning();
-    
-    return res.status(200).json({
-      message: 'Chatbot approved successfully',
-      chatbot: updatedChatbot
-    });
-  } catch (error) {
-    log(`Error approving chatbot: ${error}`, 'error');
-    return res.status(500).json({ message: 'Failed to approve chatbot', error: String(error) });
   }
 }
 
@@ -686,20 +638,7 @@ export async function sendMessage(req: Request, res: Response) {
       if (website) {
         // Safely extract company name from profile if available
         const profile = website.user?.companyProfile;
-        // Check if profile is an array or a single object
-        if (profile) {
-          if (Array.isArray(profile)) {
-            companyName = profile.length > 0 && profile[0] && profile[0].companyName ? String(profile[0].companyName) : String(website.name || '');
-          } else if (profile && typeof profile === 'object') {
-            // Cast to any to bypass TypeScript strict checking
-            const profileAny = profile as any;
-            companyName = String(profileAny.companyName || website.name || '');
-          } else {
-            companyName = String(website.name || '');
-          }
-        } else {
-          companyName = String(website.name || 'our website');
-        }
+        companyName = profile ? profile.companyName : website.name;
         siteName = website.name || "our website";
         
         // Create a properly personalized response
@@ -780,11 +719,6 @@ export async function sendMessage(req: Request, res: Response) {
       if (profileResult && profileResult.rows && profileResult.rows.length > 0) {
         companyInfo = profileResult.rows[0];
         log(`Found company profile for chatbot's user ID ${session.chatbot.userId}`, 'chatbot');
-        
-        // Check for company guidelines in additional_info
-        if (companyInfo.additional_info) {
-          log(`Found company guidelines in profile. Length: ${companyInfo.additional_info.length} chars`, 'chatbot');
-        }
       }
     } catch (dbError) {
       log(`Error fetching company profile: ${dbError}`, 'error');
@@ -879,11 +813,7 @@ export async function sendMessage(req: Request, res: Response) {
     // We want the context to be specific to this website only
     log(`Creating AI context with company name: ${companyInfo.companyName}`, 'chatbot');
     
-    // Check if there are company guidelines available
-    const companyGuidelines = companyInfo.additional_info || '';
-    
-    // Create context for AI with company guidelines
-    let context = `
+    const context = `
 IMPORTANT: You are a helpful assistant specifically for the website "${companyInfo.websiteDomain || companyInfo.companyName}".
 Only answer questions about this company/website. If asked about ecom.ai, explain you are here to help with 
 ${companyInfo.companyName} information only.
@@ -895,16 +825,7 @@ Brand Voice: ${companyInfo.brandVoice}
 Services/Products: ${companyInfo.services}
 Value Proposition: ${companyInfo.valueProposition}
 Website: ${companyInfo.websiteDomain || 'this website'}
-`;
 
-    // Add company guidelines if available
-    if (companyGuidelines && companyGuidelines.trim().length > 0) {
-      // Append JSON with guidelines for the OpenAI service to extract
-      context += `\n{"companyGuidelines": "${companyGuidelines.replace(/"/g, '\\"')}"}\n`;
-      log(`Added company guidelines to AI context (${companyGuidelines.length} chars)`, 'chatbot');
-    }
-    
-    context += `
 ANSWER ONLY QUESTIONS ABOUT THIS WEBSITE/COMPANY. For questions about other topics, politely explain you only
 have information about ${companyInfo.companyName}.
     `;

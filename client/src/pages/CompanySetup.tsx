@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Link, useLocation } from "wouter";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
@@ -10,9 +10,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { useQuery } from "@tanstack/react-query";
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 
 const companySchema = z.object({
   companyName: z.string().min(1, { message: "Company name is required" }),
@@ -20,8 +17,7 @@ const companySchema = z.object({
   targetAudience: z.string().min(1, { message: "Target audience is required" }),
   brandVoice: z.string().min(1, { message: "Brand voice is required" }),
   services: z.string().min(1, { message: "Core products/services are required" }),
-  valueProposition: z.string().min(1, { message: "Value proposition is required" }),
-  additionalInfo: z.string().optional()
+  valueProposition: z.string().min(1, { message: "Value proposition is required" })
 });
 
 type CompanyFormValues = z.infer<typeof companySchema>;
@@ -30,19 +26,6 @@ export default function CompanySetup() {
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
   const [_, setLocation] = useLocation();
-  const [scrapedData, setScrapedData] = useState<any>(null);
-  
-  // Fetch websites to get the scraped content
-  const { data: websites, isLoading: isWebsitesLoading } = useQuery({
-    queryKey: ['/api/websites'],
-    retry: 3,
-  });
-  
-  // Fetch company profile
-  const { data: profile } = useQuery({
-    queryKey: ['/api/company/profile'],
-    retry: 1,
-  });
 
   const form = useForm<CompanyFormValues>({
     resolver: zodResolver(companySchema),
@@ -52,149 +35,17 @@ export default function CompanySetup() {
       targetAudience: "",
       brandVoice: "",
       services: "",
-      valueProposition: "",
-      additionalInfo: ""
+      valueProposition: ""
     },
   });
-  
-  // When websites data is loaded, extract the scraped content
-  useEffect(() => {
-    if (websites && Array.isArray(websites) && websites.length > 0) {
-      const website = websites[0]; // Get first website
-      
-      // Check for either scrapedContent or scraped_content (for backward compatibility)
-      const content = website?.scrapedContent || website?.scraped_content;
-      
-      if (website && content) {
-        try {
-          let parsedContent: Record<string, any> = {};
-          
-          // Handle different data types
-          if (typeof content === 'string') {
-            parsedContent = JSON.parse(content);
-          } else if (typeof content === 'object') {
-            parsedContent = content as Record<string, any>;
-          }
-          
-          console.log("Scraped data found:", parsedContent);
-          
-          if (Object.keys(parsedContent).length > 0) {
-            setScrapedData(parsedContent);
-            
-            // Prefill form with scraped data if no profile exists
-            if (!profile) {
-              form.setValue("companyName", website.name || "");
-              
-              // Map industry from scraped data
-              if (parsedContent.industry) {
-                const industryMap: Record<string, string> = {
-                  "ecommerce": "ecommerce",
-                  "e-commerce": "ecommerce",
-                  "saas": "saas",
-                  "software": "saas",
-                  "healthcare": "healthcare",
-                  "medical": "healthcare", 
-                  "finance": "finance",
-                  "banking": "finance",
-                  "education": "education",
-                  "retail": "retail",
-                  "manufacturing": "manufacturing",
-                  "real_estate": "other",
-                  "travel": "other",
-                  "food": "other",
-                  "technology": "other",
-                  "media": "other",
-                  "professional_services": "other"
-                };
-                
-                // Try to use the normalized value directly or map it
-                const industry = String(parsedContent.industry).toLowerCase();
-                if (industryMap[industry]) {
-                  form.setValue("industry", industryMap[industry]);
-                } else {
-                  form.setValue("industry", "other");
-                }
-              }
-              
-              // Set target audience directly
-              if (parsedContent.targetAudience) form.setValue("targetAudience", String(parsedContent.targetAudience));
-              
-              // Map brand voice from scraped data
-              if (parsedContent.brandVoice) {
-                const voiceMap: Record<string, string> = {
-                  "professional": "professional",
-                  "friendly": "friendly",
-                  "expert": "authoritative",
-                  "authoritative": "authoritative",
-                  "casual": "casual",
-                  "fun": "playful",
-                  "playful": "playful",
-                  "innovative": "innovative",
-                  "minimalist": "professional",
-                  "trustworthy": "professional",
-                  "bold": "authoritative"
-                };
-                
-                const brandVoice = String(parsedContent.brandVoice).toLowerCase();
-                if (voiceMap[brandVoice]) {
-                  form.setValue("brandVoice", voiceMap[brandVoice]);
-                } else {
-                  form.setValue("brandVoice", "professional");
-                }
-              }
-              
-              // Set other values directly
-              if (parsedContent.services) form.setValue("services", String(parsedContent.services));
-              if (parsedContent.valueProposition) form.setValue("valueProposition", String(parsedContent.valueProposition));
-            }
-          }
-        } catch (error) {
-          console.error("Error parsing scraped content:", error);
-        }
-      }
-    }
-  }, [websites, profile, form]);
-  
-  // When profile data is loaded, populate the form
-  useEffect(() => {
-    if (profile && typeof profile === 'object') {
-      const companyName = 'companyName' in profile ? String(profile.companyName || "") : "";
-      const industry = 'industry' in profile ? String(profile.industry || "") : "";
-      const targetAudience = 'targetAudience' in profile ? String(profile.targetAudience || "") : "";
-      const brandVoice = 'brandVoice' in profile ? String(profile.brandVoice || "") : "";
-      const services = 'services' in profile ? String(profile.services || "") : "";
-      const valueProposition = 'valueProposition' in profile ? String(profile.valueProposition || "") : "";
-      const additionalInfo = 'additionalInfo' in profile ? String(profile.additionalInfo || "") : "";
-      
-      form.reset({
-        companyName,
-        industry,
-        targetAudience,
-        brandVoice,
-        services,
-        valueProposition,
-        additionalInfo
-      });
-    }
-  }, [profile, form]);
 
   async function onSubmit(values: CompanyFormValues) {
     setIsLoading(true);
     try {
-      const response = await fetch('/api/company/profile', {
-        method: profile ? 'PATCH' : 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(values),
-      });
-      
-      if (!response.ok) {
-        throw new Error('Failed to save company profile');
-      }
+      // In a real implementation, this would make an API call to save the company profile
       
       toast({
-        title: "Company profile saved",
+        title: "Company profile created",
         description: "Your company profile has been saved successfully.",
       });
       
@@ -232,42 +83,6 @@ export default function CompanySetup() {
           </div>
         </CardHeader>
         <CardContent>
-          {/* Show scraped data alert */}
-          {scrapedData && (
-            <Alert className="mb-6 border-green-500/50 bg-green-50">
-              <i className="fas fa-magic mr-2 text-green-500"></i>
-              <AlertTitle className="text-green-600">We've analyzed your website</AlertTitle>
-              <AlertDescription className="text-green-700">
-                We've analyzed your website content and pre-filled some of the information below.
-                Please review and adjust as needed.
-              </AlertDescription>
-              
-              <Accordion type="single" collapsible className="mt-3">
-                <AccordionItem value="scraped-data">
-                  <AccordionTrigger className="text-sm">View Scraped Website Data</AccordionTrigger>
-                  <AccordionContent>
-                    <div className="text-sm text-gray-600 p-3 bg-gray-50 rounded border border-gray-100 max-h-[300px] overflow-y-auto">
-                      <pre className="whitespace-pre-wrap font-mono text-xs">
-                        {JSON.stringify(scrapedData, null, 2)}
-                      </pre>
-                    </div>
-                  </AccordionContent>
-                </AccordionItem>
-              </Accordion>
-            </Alert>
-          )}
-          
-          {isWebsitesLoading && !scrapedData && (
-            <Alert className="mb-6 border-blue-500/50 bg-blue-50">
-              <i className="fas fa-spinner fa-spin mr-2 text-blue-500"></i>
-              <AlertTitle className="text-blue-600">Analyzing your website...</AlertTitle>
-              <AlertDescription className="text-blue-700">
-                We're analyzing your website to extract relevant information for your profile.
-                This may take a moment.
-              </AlertDescription>
-            </Alert>
-          )}
-          
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
               <FormField
@@ -292,8 +107,7 @@ export default function CompanySetup() {
                     <FormLabel>Industry</FormLabel>
                     <Select 
                       onValueChange={field.onChange} 
-                      defaultValue={field.value || ""}
-                      value={field.value || ""}
+                      defaultValue={field.value}
                     >
                       <FormControl>
                         <SelectTrigger>
@@ -342,8 +156,7 @@ export default function CompanySetup() {
                     <FormLabel>Brand Voice</FormLabel>
                     <Select 
                       onValueChange={field.onChange} 
-                      defaultValue={field.value || ""}
-                      value={field.value || ""}
+                      defaultValue={field.value}
                     >
                       <FormControl>
                         <SelectTrigger>
@@ -400,26 +213,30 @@ export default function CompanySetup() {
                 )}
               />
               
-              <FormField
-                control={form.control}
-                name="additionalInfo"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Company Guidelines & Additional Information</FormLabel>
-                    <FormControl>
-                      <Textarea 
-                        placeholder="Add any company guidelines, documentation, or details that will help the AI chatbot provide more accurate responses (FAQs, product specifications, policies, etc.)" 
-                        className="min-h-[120px]"
-                        {...field} 
-                      />
-                    </FormControl>
-                    <FormDescription>
-                      This information will be used to train your AI chatbot to provide better answers specific to your business.
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              <div className="pt-4">
+                <h3 className="font-medium text-gray-900 mb-2">Optional Documents</h3>
+                <p className="text-sm text-gray-600 mb-4">Upload documents to help us understand your business better</p>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="border border-dashed border-gray-300 rounded-lg p-4 text-center">
+                    <div className="flex flex-col items-center justify-center h-32">
+                      <i className="fas fa-file-upload text-gray-400 text-2xl mb-2"></i>
+                      <p className="text-sm text-gray-600">Brand Guide (PDF)</p>
+                      <Button variant="ghost" size="sm" className="mt-2">
+                        Upload
+                      </Button>
+                    </div>
+                  </div>
+                  <div className="border border-dashed border-gray-300 rounded-lg p-4 text-center">
+                    <div className="flex flex-col items-center justify-center h-32">
+                      <i className="fas fa-file-upload text-gray-400 text-2xl mb-2"></i>
+                      <p className="text-sm text-gray-600">Product Catalog (CSV)</p>
+                      <Button variant="ghost" size="sm" className="mt-2">
+                        Upload
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              </div>
               
               <div className="pt-2 flex justify-between">
                 <Button variant="ghost" asChild>
