@@ -151,8 +151,8 @@ export class MemStorage implements IStorage {
     const profile: CompanyProfile = {
       ...insertProfile,
       id,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
+      createdAt: new Date(),
+      updatedAt: new Date()
     };
     
     this.companyProfiles.set(id, profile);
@@ -171,7 +171,7 @@ export class MemStorage implements IStorage {
     const updatedProfile: CompanyProfile = {
       ...profile,
       ...profileData,
-      updatedAt: new Date().toISOString()
+      updatedAt: new Date()
     };
     
     this.companyProfiles.set(profile.id, updatedProfile);
@@ -195,8 +195,8 @@ export class MemStorage implements IStorage {
     const campaign: Campaign = {
       ...insertCampaign,
       id,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
+      createdAt: new Date(),
+      updatedAt: new Date()
     };
     
     this.campaigns.set(id, campaign);
@@ -212,7 +212,7 @@ export class MemStorage implements IStorage {
     const updatedCampaign: Campaign = {
       ...campaign,
       ...campaignData,
-      updatedAt: new Date().toISOString()
+      updatedAt: new Date()
     };
     
     this.campaigns.set(id, updatedCampaign);
