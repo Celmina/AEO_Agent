@@ -31,6 +31,7 @@ export const websites = pgTable("websites", {
   scrapedContent: text("scraped_content"),
   lastScraped: timestamp("last_scraped"),
   scrapingStatus: text("scraping_status").default("pending"),
+  status: text("status").default("pending"),
 });
 
 // Company Profiles table
